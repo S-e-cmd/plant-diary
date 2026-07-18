@@ -1,4 +1,4 @@
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzWOnBj6h8dnsKe-vN7Gg2OC2hs2FOyt9idLGlNEcpT70JgwyDWx5xnPGplzUzZYNlnmQ/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwoi7euPEGByQ-2q1SM2MNhnIvwEZwbtVtOKH6hdq5yEjoUcUTHYdRfFpHU8V1IvYUmeQ/exec';
 
 export default {
   async fetch(request, env) {
