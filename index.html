@@ -14,7 +14,7 @@
 <body>
 <div class="app">
   <header class="header"><h1>植物栽培管理日誌</h1><button class="sync" id="syncBtn">更新</button></header>
-  <section class="pinned" id="pinned"><div class="pin-head"><div><div class="pin-title">予定 <span id="overdue"></span></div><div class="weather" id="weather">天気データを取得中</div></div><button class="pin-toggle" id="pinToggle">展開</button></div><div class="pin-title" style="margin-top:8px">消毒</div><div class="pin-row" id="pinRow"></div><div class="pin-title" style="margin-top:8px">液肥</div><div class="pin-row" id="liquidRow"></div></section>
+  <section class="pinned" id="pinned"><div class="pin-head"><div><div class="pin-title">予定 <span id="overdue"></span></div><div class="weather" id="weather">天気データを取得中</div></div></div><div class="pin-title" style="margin-top:8px">消毒</div><div class="pin-row" id="pinRow"></div><div class="pin-title" style="margin-top:8px">液肥</div><div class="pin-row" id="liquidRow"></div></section>
   <main class="scroll">
     <section class="tab active" id="tab-input">
       <div class="card"><div class="seg"><button class="active" data-input-type="actual">実施</button><button data-input-type="plan">予定</button></div><label class="label">日付</label><input class="date" type="date" id="inputDate"><label class="label">作業内容</label><textarea id="rawText" placeholder="例：牡丹に水やり。西側を除草。次回は薬剤A、次々回は薬剤Bで消毒予定。"></textarea><button class="primary" id="analyzeBtn">入力内容を整理する</button></div>
@@ -76,7 +76,7 @@ function readModalForm(type){return{type,date:$('#mDate').value,plantName:$('#mP
 async function removeEntry(type,id){if(!confirm('この記録を削除しますか？'))return;try{const d=await api({action:'delete',type,id});applyBootstrap(d);toast('削除しました')}catch(e){toast(e.message)}}
 function showModal(title,html,onSave){$('#modalTitle').textContent=title;$('#modalBody').innerHTML=html;$('#modal').classList.add('show');$('#modalSave').onclick=onSave}function hideModal(){$('#modal').classList.remove('show')}$('#closeModal').onclick=hideModal;$('#modal').onclick=e=>{if(e.target===$('#modal'))hideModal()};
 $$('[data-tab]').forEach(b=>b.onclick=()=>{$$('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));$$('.tab').forEach(x=>x.classList.remove('active'));$(`#tab-${b.dataset.tab}`).classList.add('active');if(b.dataset.tab==='logs')renderLogs();if(b.dataset.tab==='plans')renderPlans()});
-$('#pinToggle').onclick=()=>{const p=$('#pinned');p.classList.toggle('open');$('#pinToggle').textContent=p.classList.contains('open')?'閉じる':'展開'};$('#syncBtn').onclick=bootstrap;
+$('#syncBtn').onclick=bootstrap;
 bootstrap();
 </script>
 </body>
