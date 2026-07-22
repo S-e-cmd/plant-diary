@@ -1,0 +1,32 @@
+name: Notify App Checker
+
+on:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notify-app-checker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  notify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Wait for deployment
+        run: sleep 90
+      - name: Request immediate review
+        env:
+          CHECKER_ENDPOINT: https://app-checker.pages.dev/api/development-review
+          APP_ID: plant-diary
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          curl --fail-with-body --retry 3 --retry-delay 10 \
+            --request POST "$CHECKER_ENDPOINT" \
+            --header 'Content-Type: application/json' \
+            --data "{\"appId\":\"$APP_ID\",\"repository\":\"$REPOSITORY\",\"commitSha\":\"$COMMIT_SHA\"}"
