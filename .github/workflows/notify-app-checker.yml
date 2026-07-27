@@ -1,8 +1,7 @@
-name: Notify App Checker
+name: Manual App Checker Notification
 
 on:
-  push:
-    branches: [main, master]
+  workflow_dispatch:
 
 permissions:
   contents: read
