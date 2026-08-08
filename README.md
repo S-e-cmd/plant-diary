@@ -13,7 +13,20 @@ Cloudflare Pages 配信用のWebアプリです。
 
 ## ファイル
 
-- `index.html`：アプリ画面
-- `_worker.js`：GAS APIとの中継
+- `index.html`：アプリ画面、クライアント状態、表示・入力処理
+- `_worker.js`：`/api` とGAS間の通信境界、静的アセット配信
+- `scripts/test-worker-contract.mjs`：Worker通信契約の回帰テスト
+- `ai-context.json` / `llms.txt`：AI向け引き継ぎ入口
+- `docs/`：現在構成、データ契約、UI制約、整備状況
 
 GASコード、APIキー、スプレッドシート設定はこのリポジトリへ保存しません。
+
+## Worker回帰テスト
+
+Node.js 18以降で、追加パッケージなしで実行できます。
+
+```bash
+node scripts/test-worker-contract.mjs
+```
+
+確認対象は、静的配信、`OPTIONS /api`、POST制限、空body、GASへの送信形式、正常JSON応答、JSON不正時と通信失敗時の既存エラー契約です。
