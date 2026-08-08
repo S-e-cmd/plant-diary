@@ -67,6 +67,23 @@ Added a thin compatibility boundary for the future runtime switch without activa
 
 `index.html` still does not import the staged weather files, so deployed client runtime behavior remains unchanged in batch 7 and the client build marker remains `2026-07-19-v29`.
 
+### Batch 8 — exact-match runtime switch preparation
+
+The connected GitHub write API can only replace `index.html` as a whole file and does not provide a safe partial patch operation. Because `index.html` is a large single file, reconstructing and replacing the entire file only to change the weather helper block would create unnecessary unrelated-content loss risk.
+
+To avoid that risk, added `scripts/apply-weather-extraction.mjs`:
+
+- it performs only exact-match replacements against the current known client build marker and exact inline weather helper block;
+- it aborts if either expected source occurs zero times or more than once;
+- it aborts if the runtime adapter appears to be already wired;
+- it replaces the inline weather helper block with a narrow `weather-runtime.js` bridge while leaving render, bootstrap, DOM, storage, and API code untouched;
+- it updates the client build marker to `20260808-01` only when the runtime switch is actually applied;
+- it verifies after transformation that the new bridge exists, the old helper block is gone, and `renderForecasts`, `renderWorkWindows`, and `applyBootstrap` remain present.
+
+`package.json` now exposes this as `npm run maintenance:apply-weather-extraction`.
+
+This preparation batch does **not** modify `index.html`, so deployed client runtime behavior and the current client build marker remain unchanged.
+
 ## Confirmed client maintenance observations
 
 Confirmed responsibilities currently co-located in `index.html` include:
@@ -89,9 +106,10 @@ The weather helper group remains the first staged extraction because its core lo
 - Major Change Planning requirement for current maintenance: not-applicable based on currently confirmed scope and contracts.
 - Staged `client/weather-utils.js`: repository content verified; runtime inactive by design.
 - Staged `client/weather-runtime.js`: repository content verified; runtime inactive by design.
+- Exact-match runtime switch script: repository content verified; not executed against `index.html` in the connected environment.
 - Weather utility/runtime/parity checks: implemented; execution pending because the available environment cannot run against a repository checkout.
 - Client static contract checker: implemented and strengthened; execution pending, not counted as verified.
-- Production browser regression: not required for batch 7 because deployed client runtime was intentionally unchanged.
+- Production browser regression: not required for batch 8 because deployed client runtime was intentionally unchanged.
 - External GAS/spreadsheet internals: unchanged and outside this maintenance batch.
 
 ## Current scope decision
@@ -100,12 +118,12 @@ The weather helper group remains the first staged extraction because its core lo
 - Scope completion: incomplete.
 - Recommended action: continue.
 - Major Change Planning: not-applicable.
-- Reason: the first client responsibility is staged with both pure helpers and a compatibility adapter. The next runtime step can be limited to wiring this adapter into the existing client while preserving current function signatures and contracts.
+- Reason: the first client responsibility is staged, a compatibility adapter exists, and the runtime switch itself is now represented as an exact-match fail-closed transformation rather than an unsafe full-file rewrite.
 
 ## Next maintenance batch
 
-- execute `npm test` against a repository checkout when execution becomes available;
-- switch only the staged weather helper responsibility into the deployed client through the compatibility adapter;
-- preserve current function behavior, state shape, thresholds, DOM IDs, LocalStorage keys, API payloads, and UI behavior;
-- update the client build marker because that switch changes deployed client assets;
-- re-run Worker/client/weather checks after the switch before any further extraction.
+- run `npm test` against a repository checkout;
+- run `npm run maintenance:apply-weather-extraction` only after the pre-change checks pass;
+- run `npm test` again immediately after the transformation;
+- commit only the resulting `index.html` change if all checks pass;
+- then verify the deployed client before extracting any additional responsibility.
