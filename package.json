@@ -1,0 +1,13 @@
+{
+  "name": "plant-diary-maintenance",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/test-worker-contract.mjs && node scripts/check-client-contract.mjs",
+    "test:worker": "node scripts/test-worker-contract.mjs",
+    "test:client": "node scripts/check-client-contract.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
