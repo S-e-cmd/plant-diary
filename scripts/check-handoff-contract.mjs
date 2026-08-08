@@ -47,4 +47,19 @@ for (const marker of [
   if (!runbook.includes(marker)) throw new Error(`Weather extraction runbook is missing safety marker: ${marker}`);
 }
 
+const architecture = fs.readFileSync('docs/ARCHITECTURE.md', 'utf8');
+const projectStatus = fs.readFileSync('docs/PROJECT_STATUS.md', 'utf8');
+const currentBuild = context?.build;
+if (typeof currentBuild !== 'string' || !currentBuild.trim()) {
+  throw new Error('ai-context.json must contain the current client build marker');
+}
+for (const [name, source] of [
+  ['docs/ARCHITECTURE.md', architecture],
+  ['docs/PROJECT_STATUS.md', projectStatus],
+]) {
+  if (!source.includes(`Client build marker: \`${currentBuild}\``)) {
+    throw new Error(`${name} must match ai-context.json build marker ${currentBuild}`);
+  }
+}
+
 console.log('handoff contract: ok');
