@@ -20,7 +20,8 @@
     "dataContract": "docs/DATA_CONTRACT.md",
     "uiRules": "docs/UI_RULES.md",
     "projectStatus": "docs/PROJECT_STATUS.md",
-    "majorChangeHandoff": "docs/MAJOR_CHANGE_HANDOFF.md"
+    "majorChangeHandoff": "docs/MAJOR_CHANGE_HANDOFF.md",
+    "weatherExtractionRunbook": "docs/WEATHER_EXTRACTION_RUNBOOK.md"
   },
   "maintenance": {
     "splitByResponsibility": true,
