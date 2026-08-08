@@ -2,14 +2,14 @@
 
 Updated: 2026-08-08
 Client build marker: `20260808-01`
-Worker build marker: `2026-08-08-v21`
+Worker build marker: `2026-08-08-v22`
 
 ## Current state
 
 - Cloudflare Pages deployment with no framework build step.
 - `main` is the production branch and deploys automatically.
-- `_worker.js` remains the same-origin `/api` transport boundary to the existing GAS backend.
-- Weather decision helpers are now separated from `index.html`.
+- `_worker.js` remains the same-origin `/api` boundary and now delegates upstream GAS transport/parsing to `worker/gas-transport.js` on the maintenance branch.
+- Weather decision helpers are separated from `index.html`.
 - `index.html` dynamically loads `client/weather-runtime.js`, which delegates weather calculations to `client/weather-utils.js`.
 - The previous inline implementations of weather naming, rain/wind risk, work risk, plan weather kind, and `safeWindows()` have been removed from `index.html`.
 
@@ -28,43 +28,45 @@ Startup order after the switch is:
 
 The existing API payloads, LocalStorage keys, DOM IDs, record formats, weather thresholds, and Worker/GAS contract were not changed by this extraction.
 
+## GAS transport extraction result
+
+The Worker-side GAS transport responsibility has been separated on `agent/split-gas-transport` without changing the public `/api` contract.
+
+- `_worker.js` retains route selection, method/body validation, response status selection, JSON response formatting, and static asset delegation.
+- `worker/gas-transport.js` owns the existing GAS endpoint request, `POST` transport, `text/plain;charset=utf-8`, redirect-follow behavior, upstream response text parsing, and invalid-JSON classification.
+- Existing GAS endpoint, request body forwarding, response payload shape, HTTP status behavior, error messages, and cache headers are preserved.
+- Worker build marker for this candidate change is `2026-08-08-v22`.
+- No GAS code, spreadsheet schema, Binding, Secret, deployment setting, or production data was changed.
+
 ## Verification result
 
-Executed before the runtime switch:
+Existing weather/client verification remains recorded from the completed weather extraction.
 
-- unified `npm test`: passed;
-- handoff contract: passed;
-- Worker contract: all seven checks passed;
-- client syntax/API/LocalStorage/DOM contract checks: passed;
-- weather utility contract: passed;
-- semantic parity with the previous inline implementation: passed;
-- weather runtime adapter contract: passed;
-- extraction dry-run: passed;
-- staged extraction parity check: passed.
+For the GAS transport extraction:
 
-Executed immediately after the runtime switch:
+- the modified Worker, extracted transport module, and revised Worker contract test were reproduced locally as ES modules;
+- all seven existing Worker contract scenarios passed after extraction;
+- non-API static delegation passed;
+- `OPTIONS /api` 204 behavior passed;
+- non-POST 405 behavior passed;
+- empty POST 400 behavior passed;
+- valid GAS JSON pass-through and upstream POST/content-type/body contract passed;
+- invalid GAS JSON existing 502 contract passed;
+- upstream fetch failure existing 502 contract passed.
 
-- unified `npm test`: passed;
-- Worker contract: all seven checks passed;
-- client syntax/API/LocalStorage/DOM contract checks: passed;
-- dynamic loading of `client/weather-runtime.js`: confirmed;
-- import path from `weather-runtime.js` to `weather-utils.js`: confirmed;
-- weather utility contract: passed;
-- semantic parity for weather display naming, rain judgment, strong-wind judgment, work-risk judgment, plan weather kind, and `safeWindows()`: passed;
-- weather runtime adapter contract: passed;
-- switched extraction parity check: passed;
-- transformed client JavaScript syntax and initialization ordering: passed.
-
-During the required pre/post execution, existing maintenance tests exposed three test-harness issues: ES modules were being parsed as classic scripts, truthy return semantics were asserted as strict booleans, and time-dependent tests inherited the runner's UTC timezone. These were corrected without changing the application weather behavior. The exact-match transform was also aligned to the confirmed current inline source before application.
+The repository test now imports `_worker.js` as a real file module so its relative `worker/gas-transport.js` import is exercised rather than evaluating `_worker.js` in isolation through a data URL.
 
 ## Remaining verification
 
-Automated regression checks and the actual source switch are complete. A live browser session was not executed by the repository test runner, so visual rendering against the deployed site remains outside the automated result recorded here.
+- The branch has not been merged into `main`, so production remains unchanged.
+- Production deployment/runtime verification is intentionally not claimed before merge.
+- No live GAS request was sent as part of this maintenance verification; the existing contract tests use controlled fetch stubs.
 
 ## Current scope decision
 
-- Weather extraction: complete.
-- Client build: `20260808-01`.
-- Old inline weather-helper duplication: removed.
+- GAS transport responsibility extraction: complete on maintenance branch.
+- Existing `/api` contract: preserved by automated contract scenarios.
+- Client build: `20260808-01` unchanged.
+- Candidate Worker build: `2026-08-08-v22`.
 - Major Change Planning: not applicable.
-- Recommended action for this batch: finish.
+- Recommended action for this batch: review/merge the isolated branch before selecting another responsibility.
