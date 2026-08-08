@@ -50,11 +50,22 @@ Added:
 - `scripts/test-weather-parity.mjs` — guard that confirms the current inline source is still present and the staged module remains inactive until the runtime-switch batch;
 - `client/README.md` and `scripts/README.md` — handoff notes for staged extraction and checks.
 
-Updated `package.json` so `npm test` now includes Worker, client, and staged weather checks.
+Updated `package.json` so `npm test` includes Worker, client, and staged weather checks.
 
 The staged weather module is intentionally **not referenced by `index.html` yet**. Therefore this batch changes repository maintenance code but not the deployed client behavior, client build marker, DOM, state shape, LocalStorage keys, API payloads, storage format, or backend contract.
 
 A SHA conflict was encountered while updating `package.json`; the current file was re-fetched and the intended script change was reapplied without overwriting concurrent content, following the starter concurrency policy.
+
+### Batch 7 — weather runtime compatibility adapter
+
+Added a thin compatibility boundary for the future runtime switch without activating it yet.
+
+- `client/weather-runtime.js` exposes the current weather helper call signatures while delegating pure calculations to `client/weather-utils.js`.
+- The adapter reads `weatherRules` and `forecastHourly` through a state getter rather than taking a stale snapshot, preserving the current dynamic settings behavior.
+- `scripts/test-weather-runtime.mjs` verifies the adapter contract, including that later state mutations are observed.
+- `package.json` now runs the pure utility test, runtime adapter test, and staged parity guard together under `npm run test:weather`.
+
+`index.html` still does not import the staged weather files, so deployed client runtime behavior remains unchanged in batch 7 and the client build marker remains `2026-07-19-v29`.
 
 ## Confirmed client maintenance observations
 
@@ -67,7 +78,7 @@ Confirmed responsibilities currently co-located in `index.html` include:
 - plan/actual record editing and bulk operations;
 - UI event wiring.
 
-The weather helper group is the first staged extraction because its core logic can be represented as pure functions without changing storage, API payloads, DOM IDs, or backend contracts.
+The weather helper group remains the first staged extraction because its core logic is now isolated as pure functions plus a narrow runtime adapter without changing storage, API payloads, DOM IDs, or backend contracts.
 
 ## Verification status
 
@@ -77,9 +88,10 @@ The weather helper group is the first staged extraction because its core logic c
 - Current parent starter Major Change rules: verified against current repository state.
 - Major Change Planning requirement for current maintenance: not-applicable based on currently confirmed scope and contracts.
 - Staged `client/weather-utils.js`: repository content verified; runtime inactive by design.
-- Weather utility tests and parity guard: implemented; execution pending because the available environment cannot run against a repository checkout.
+- Staged `client/weather-runtime.js`: repository content verified; runtime inactive by design.
+- Weather utility/runtime/parity checks: implemented; execution pending because the available environment cannot run against a repository checkout.
 - Client static contract checker: implemented and strengthened; execution pending, not counted as verified.
-- Production browser regression: not required for batch 6 because deployed client runtime was intentionally unchanged.
+- Production browser regression: not required for batch 7 because deployed client runtime was intentionally unchanged.
 - External GAS/spreadsheet internals: unchanged and outside this maintenance batch.
 
 ## Current scope decision
@@ -88,12 +100,12 @@ The weather helper group is the first staged extraction because its core logic c
 - Scope completion: incomplete.
 - Recommended action: continue.
 - Major Change Planning: not-applicable.
-- Reason: the first client responsibility has been staged safely with no runtime switch. The next runtime step should replace only the corresponding inline weather helpers after pre-change tests can be executed, then re-run the same checks before another responsibility is touched.
+- Reason: the first client responsibility is staged with both pure helpers and a compatibility adapter. The next runtime step can be limited to wiring this adapter into the existing client while preserving current function signatures and contracts.
 
 ## Next maintenance batch
 
 - execute `npm test` against a repository checkout when execution becomes available;
-- switch only the staged weather helper responsibility into the deployed client;
+- switch only the staged weather helper responsibility into the deployed client through the compatibility adapter;
 - preserve current function behavior, state shape, thresholds, DOM IDs, LocalStorage keys, API payloads, and UI behavior;
 - update the client build marker because that switch changes deployed client assets;
 - re-run Worker/client/weather checks after the switch before any further extraction.
