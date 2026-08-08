@@ -1,0 +1,11 @@
+# Application Development Context
+
+When this application repository is provided for maintenance or continued development:
+
+1. Read /ai-context.json first.
+2. Read the local docs referenced by ai-context.json.
+3. Use the parent starter-template manifest for shared development rules.
+4. Preserve existing behavior, data compatibility, deployment method, and public routes unless the current task explicitly changes them.
+5. Update local handoff docs in the same change when architecture, data contracts, UI constraints, or project status change.
+6. Do not restructure this existing app merely to match the starter template.
+7. GitHub Actions are not the default automation mechanism; the existing manual checker workflow is an intentional exception unless the user requests otherwise.
