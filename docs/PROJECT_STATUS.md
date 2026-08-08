@@ -44,7 +44,8 @@ The repository now contains maintenance checks for:
 - staged weather utility behavior;
 - weather runtime compatibility behavior;
 - weather extraction dry-run transformation;
-- weather extraction parity in both staged and switched states.
+- weather extraction parity in both staged and switched states;
+- existence and required safety markers of the weather extraction runbook.
 
 `package.json` exposes these through `npm test` and individual `test:*` commands. No external package dependency or build step has been introduced.
 
@@ -54,10 +55,12 @@ The first client responsibility selected for extraction is weather decision logi
 
 - `client/weather-utils.js` contains pure weather helper logic.
 - `client/weather-runtime.js` preserves current call signatures while reading live `weatherRules` and `forecastHourly` state.
-- `scripts/weather-extraction-transform.mjs` is now the single source of truth for the fail-closed transformation.
+- `scripts/weather-extraction-transform.mjs` is the single source of truth for the fail-closed transformation.
 - `scripts/apply-weather-extraction.mjs` only reads `index.html`, calls the shared transform, and writes the verified result.
 - `scripts/test-weather-extraction-dry-run.mjs` applies the same transform in memory without touching `index.html`, parses the transformed inline client script with `new Function(...)`, and verifies weather initialization occurs before bootstrap.
 - `test-weather-parity.mjs` accepts either a fully staged or fully switched state and rejects mixed/partial states.
+- `docs/WEATHER_EXTRACTION_RUNBOOK.md` records the exact apply, verification, stop, and rollback procedure for this extraction.
+- `ai-context.json` references that runbook, and `scripts/check-handoff-contract.mjs` now fails if the reference or required safety markers drift.
 
 Earlier review caught and corrected a proposed top-level `await import(...)` syntax error before runtime activation. The current transform uses async `initializeWeatherRuntime()` plus guarded `startApp()` instead.
 
@@ -78,7 +81,8 @@ Verified:
 - Worker transport regression test: seven checks passed;
 - current parent starter latest commit and app-specific handoff requirement;
 - handoff check is part of unified `npm test`;
-- weather extraction transform, compatibility adapter, dry-run test, parity test, and application script exist and share one transformation implementation.
+- weather extraction transform, compatibility adapter, dry-run test, parity test, application script, and rollback runbook exist in the repository;
+- the handoff checker now verifies the runbook reference and required apply/rollback/build markers.
 
 Not yet verified by execution in the current connected environment:
 
