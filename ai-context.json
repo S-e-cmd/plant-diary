@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "schemaVersionMeaning": "ai-context-document-schema",
+  "starter": {
+    "schemaVersion": 5,
+    "schemaVersionMeaning": "parent-starter-manifest-schema",
+    "bootstrapTemplateCommitSha": "4e0b323bfedab6765bc7903b17fb850d5b83293c",
+    "bootstrapTemplateRevision": "existing-app-alignment-2026-08-08",
+    "currentParentManifestUrl": "https://raw.githubusercontent.com/S-e-cmd/app-starter-template/main/manifest.json"
+  },
+  "template": {
+    "name": "core",
+    "repository": "S-e-cmd/app-starter-template",
+    "repositoryUrl": "https://github.com/S-e-cmd/app-starter-template",
+    "manifestUrl": "https://raw.githubusercontent.com/S-e-cmd/app-starter-template/main/manifest.json"
+  },
+  "build": "2026-07-19-v29",
+  "docs": {
+    "architecture": "docs/ARCHITECTURE.md",
+    "dataContract": "docs/DATA_CONTRACT.md",
+    "uiRules": "docs/UI_RULES.md",
+    "projectStatus": "docs/PROJECT_STATUS.md"
+  },
+  "maintenance": {
+    "splitByResponsibility": true,
+    "updateDocsWithCode": true,
+    "githubActionsByDefault": false,
+    "preserveBehaviorOutsideRequestedScope": true
+  },
+  "publicSafety": {
+    "thisFileMayBePublic": true,
+    "validateActualValuesBeforePublishing": true,
+    "excludedCategories": [
+      "secrets-and-credentials",
+      "internal-only-urls",
+      "private-resource-identifiers",
+      "personal-data",
+      "unfixed-vulnerability-details",
+      "operationally-sensitive-internal-information"
+    ]
+  },
+  "handoff": {
+    "readLocalContextFirst": true,
+    "thenReadParentManifest": true,
+    "latestParentRulesDoNotByThemselvesJustifyExistingAppRestructure": true
+  }
+}
