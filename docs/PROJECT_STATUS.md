@@ -42,7 +42,7 @@ The repository now contains maintenance checks for:
 - client syntax and important DOM/API/LocalStorage contracts;
 - staged weather utility behavior;
 - weather runtime compatibility behavior;
-- pre-switch weather extraction parity;
+- weather extraction parity in both staged and switched states;
 - local handoff and Major Change guidance consistency.
 
 `package.json` exposes these through `npm test` and individual `test:*` commands. No external package dependency or build step has been introduced.
@@ -55,6 +55,19 @@ The first client responsibility selected for extraction is weather decision logi
 - `client/weather-runtime.js` provides compatibility with the current call signatures while reading live `weatherRules` and `forecastHourly` state.
 - weather utility and runtime contract tests are present.
 - `scripts/apply-weather-extraction.mjs` provides a fail-closed exact-match transformation for the eventual `index.html` switch.
+
+A pre-application review found two defects in the original switch preparation before they reached the deployed client:
+
+1. the proposed bridge inserted top-level `await import(...)` into the existing classic `<script>`, which would have produced a client JavaScript syntax error;
+2. the parity test accepted only the pre-switch state, so the required post-switch `npm test` would have failed even after a correct extraction.
+
+Both were corrected before the runtime switch:
+
+- the migration now creates an async `initializeWeatherRuntime()` and guarded `startApp()` sequence, so dynamic import completes before saved-tab rendering or bootstrap can call weather helpers;
+- the processing overlay is enabled during initialization to prevent user interaction with an incompletely initialized runtime;
+- the transformation now requires exact matches for both the old helper block and old startup block and aborts on drift;
+- `test-weather-parity.mjs` now accepts either a fully staged state or a fully switched state and rejects mixed/partial states;
+- the switched-state guard requires the async startup path and the new client build marker.
 
 The staged files are still **not wired into the deployed `index.html`**. Therefore the client runtime and client build marker remain unchanged.
 
@@ -81,9 +94,10 @@ Verified:
 - current repository structure and handoff files;
 - Worker refactor source;
 - Worker transport regression test: seven checks passed;
-- current parent starter latest commit and new app-specific handoff requirement;
-- handoff check is now part of the unified `npm test` command;
-- weather extraction source, compatibility adapter, tests, and exact-match switch script exist in the repository.
+- current parent starter latest commit and app-specific handoff requirement;
+- handoff check is part of the unified `npm test` command;
+- weather extraction source, compatibility adapter, tests, and exact-match switch script exist in the repository;
+- switch preparation has been statically reviewed for startup ordering and pre/post parity behavior, and the identified defects were corrected before deployment.
 
 Not yet verified by execution in the current connected environment:
 
