@@ -3,9 +3,12 @@ import { readFile } from 'node:fs/promises';
 import { transformWeatherExtraction, newBuild, oldHelpers, oldStartup } from './weather-extraction-transform.mjs';
 
 const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
-const transformed=transformWeatherExtraction(html);
+const alreadySwitched=html.includes(newBuild)&&html.includes("import('./client/weather-runtime.js')");
+const transformed=alreadySwitched?html:transformWeatherExtraction(html);
 
-assert.notEqual(transformed,html,'dry-run transform must change the current pre-switch client');
+if(!alreadySwitched){
+  assert.notEqual(transformed,html,'dry-run transform must change the current pre-switch client');
+}
 assert.ok(transformed.includes(newBuild),'dry-run result must contain the new client build marker');
 assert.ok(!transformed.includes(oldHelpers),'dry-run result must remove inline weather helpers');
 assert.ok(!transformed.includes(oldStartup),'dry-run result must remove eager startup');
@@ -21,4 +24,4 @@ const bootstrapAt=clientSource.indexOf('await bootstrap()',initializeAt);
 assert.ok(initializeAt>=0,'startup must await weather runtime initialization');
 assert.ok(bootstrapAt>initializeAt,'bootstrap must run only after weather runtime initialization');
 
-console.log('ok - weather extraction dry-run');
+console.log(`ok - weather extraction dry-run (${alreadySwitched?'switched':'staged'})`);
