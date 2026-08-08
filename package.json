@@ -3,9 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node scripts/test-worker-contract.mjs && node scripts/check-client-contract.mjs",
+    "test": "npm run test:worker && npm run test:client && npm run test:weather",
     "test:worker": "node scripts/test-worker-contract.mjs",
-    "test:client": "node scripts/check-client-contract.mjs"
+    "test:client": "node scripts/check-client-contract.mjs",
+    "test:weather": "node scripts/test-weather-utils.mjs && node scripts/test-weather-parity.mjs"
   },
   "engines": {
     "node": ">=18"
