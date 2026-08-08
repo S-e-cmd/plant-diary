@@ -17,20 +17,31 @@ function isWeatherSensitivePlan(x){return!!x&&(x.category==='消毒'||x.category
 function planWeatherKind(x){return x&&(x.category==='液肥'||x.liquidFertilizer)&&!(x.category==='消毒'||x.pesticide)?'liquid':'spray'}
 function safeWindows(date,kind){const rows=state.forecastHourly.filter(x=>String(x.datetime||'').slice(0,10)===date).filter(x=>{const h=new Date(x.datetime).getHours();return h>=6&&h<=18&&!weatherWorkRisk(x,kind)});if(!rows.length)return'候補なし';const hours=rows.map(x=>new Date(x.datetime).getHours()).sort((a,b)=>a-b),groups=[];hours.forEach(h=>{const g=groups.at(-1);if(g&&h<=g[1]+3)g[1]=h;else groups.push([h,h])});return groups.map(g=>\`\${g[0]}〜\${Math.min(g[1]+3,21)}時\`).join('、')}`;
 
-const runtimeBridge=`const weatherRuntime=await import('./client/weather-runtime.js').then(({createWeatherRuntime})=>createWeatherRuntime(()=>state));
-const {forecastWeatherName,weatherRule,forecastRain,forecastStrongWind,weatherWorkRisk,riskReason,isWeatherSensitivePlan,planWeatherKind,safeWindows}=weatherRuntime;`;
+const runtimeBridge=`let forecastWeatherName,weatherRule,forecastRain,forecastStrongWind,weatherWorkRisk,riskReason,isWeatherSensitivePlan,planWeatherKind,safeWindows;
+async function initializeWeatherRuntime(){const {createWeatherRuntime}=await import('./client/weather-runtime.js');({forecastWeatherName,weatherRule,forecastRain,forecastStrongWind,weatherWorkRisk,riskReason,isWeatherSensitivePlan,planWeatherKind,safeWindows}=createWeatherRuntime(()=>state))}`;
+
+const oldStartup=`const lastTab=localStorage.getItem('plantDiaryLastTab');if(['today','input','logs','plans'].includes(lastTab))$(\`[data-tab="\${lastTab}"]\`).click();
+if(savedDraft){$$('[data-input-type]').forEach(b=>b.classList.toggle('active',b.dataset.inputType===state.inputType));$('#draftNote').textContent='前回の下書きを復元しました'}
+bootstrap();`;
+
+const newStartup=`async function startApp(){busy(true,'初期化中…');try{await initializeWeatherRuntime();const lastTab=localStorage.getItem('plantDiaryLastTab');if(['today','input','logs','plans'].includes(lastTab))$(\`[data-tab="\${lastTab}"]\`).click();if(savedDraft){$$('[data-input-type]').forEach(b=>b.classList.toggle('active',b.dataset.inputType===state.inputType));$('#draftNote').textContent='前回の下書きを復元しました'}await bootstrap()}catch(e){busy(false);toast(e?.message||'初期化に失敗しました')}}
+startApp();`;
 
 assert.ok(html.includes(oldBuild),'expected client build marker not found; aborting');
 assert.equal(html.split(oldBuild).length-1,1,'client build marker must occur exactly once');
 assert.ok(html.includes(oldHelpers),'expected inline weather helper block not found; aborting');
 assert.equal(html.split(oldHelpers).length-1,1,'inline weather helper block must occur exactly once');
+assert.ok(html.includes(oldStartup),'expected startup block not found; aborting');
+assert.equal(html.split(oldStartup).length-1,1,'startup block must occur exactly once');
 assert.ok(!html.includes("import('./client/weather-runtime.js')"),'weather runtime is already wired; aborting');
 
-html=html.replace(oldBuild,newBuild).replace(oldHelpers,runtimeBridge);
+html=html.replace(oldBuild,newBuild).replace(oldHelpers,runtimeBridge).replace(oldStartup,newStartup);
 
 assert.ok(html.includes(newBuild),'new build marker was not applied');
 assert.ok(html.includes("import('./client/weather-runtime.js')"),'weather runtime import was not applied');
+assert.ok(html.includes('await initializeWeatherRuntime()'),'weather runtime must initialize before startup rendering');
 assert.ok(!html.includes(oldHelpers),'old inline weather helper block still remains');
+assert.ok(!html.includes(oldStartup),'old eager startup block still remains');
 assert.ok(html.includes("function renderForecasts()"),'weather rendering logic must remain inline');
 assert.ok(html.includes("function renderWorkWindows()"),'work-window rendering logic must remain inline');
 assert.ok(html.includes("function applyBootstrap(d)"),'bootstrap contract must remain inline');
