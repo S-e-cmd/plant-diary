@@ -9,3 +9,5 @@ When this application repository is provided for maintenance or continued develo
 5. Update local handoff docs in the same change when architecture, data contracts, UI constraints, or project status change.
 6. Do not restructure this existing app merely to match the starter template.
 7. GitHub Actions are not the default automation mechanism; the existing manual checker workflow is an intentional exception unless the user requests otherwise.
+8. Before any future major architecture, backend, storage, routing, auth, migration, or transition work, re-read the current parent `docs/MAJOR_CHANGE_PLANNING.md` and `docs/PROTOCOL_ROUTING_RULES.md`, then read `docs/MAJOR_CHANGE_HANDOFF.md` for this application's protected contracts and candidate boundaries.
+9. App-specific Major Change candidate boundaries are handoff context only. They do not by themselves mean `major-change-planning-required` and do not authorize implementation, production mutation, migration, or deletion.
