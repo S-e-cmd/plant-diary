@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 
-const source = await readFile(new URL('../_worker.js', import.meta.url), 'utf8');
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
-const { default: worker } = await import(moduleUrl);
+const moduleUrl = new URL('../_worker.js', import.meta.url);
+moduleUrl.searchParams.set('test', String(Date.now()));
+const { default: worker } = await import(moduleUrl.href);
 
 const originalFetch = globalThis.fetch;
 const request = (path, init = {}) => new Request(`https://example.test${path}`, init);
