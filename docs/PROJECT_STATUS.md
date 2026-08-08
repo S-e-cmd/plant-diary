@@ -42,6 +42,7 @@ The repository now contains maintenance checks for:
 - Worker transport contract;
 - client syntax and important DOM/API/LocalStorage contracts;
 - staged weather utility behavior;
+- semantic parity between the current inline weather implementation and extracted weather utilities across weather-code, rain, probability, wind, plan-kind, and safe-window boundary cases;
 - weather runtime compatibility behavior;
 - weather extraction dry-run transformation;
 - weather extraction parity in both staged and switched states;
@@ -55,6 +56,7 @@ The first client responsibility selected for extraction is weather decision logi
 
 - `client/weather-utils.js` contains pure weather helper logic.
 - `client/weather-runtime.js` preserves current call signatures while reading live `weatherRules` and `forecastHourly` state.
+- `scripts/test-weather-semantic-parity.mjs` keeps a reference copy of the currently confirmed inline behavior and compares the extracted utilities against it over boundary-focused vectors.
 - `scripts/weather-extraction-transform.mjs` is the single source of truth for the fail-closed transformation.
 - `scripts/apply-weather-extraction.mjs` only reads `index.html`, calls the shared transform, and writes the verified result.
 - `scripts/test-weather-extraction-dry-run.mjs` applies the same transform in memory without touching `index.html`, parses the transformed inline client script with `new Function(...)`, and verifies weather initialization occurs before bootstrap.
@@ -81,13 +83,14 @@ Verified:
 - Worker transport regression test: seven checks passed;
 - current parent starter latest commit and app-specific handoff requirement;
 - handoff check is part of unified `npm test`;
-- weather extraction transform, compatibility adapter, dry-run test, parity test, application script, and rollback runbook exist in the repository;
-- the handoff checker now verifies the runbook reference and required apply/rollback/build markers.
+- weather extraction transform, compatibility adapter, semantic parity test, dry-run test, parity test, application script, and rollback runbook exist in the repository;
+- the extracted weather implementation has been source-reviewed against the current inline implementation and the semantic parity test now encodes that comparison for execution on a checkout;
+- the handoff checker verifies the runbook reference and required apply/rollback/build markers.
 
 Not yet verified by execution in the current connected environment:
 
 - full `npm test` after the latest additions;
-- dry-run test against a local repository checkout;
+- semantic parity and dry-run tests against a local repository checkout;
 - actual weather runtime switch in `index.html`;
 - browser regression after that future client switch.
 
