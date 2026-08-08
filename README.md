@@ -40,4 +40,6 @@ npm run test:client
 
 Worker側は、静的配信、`OPTIONS /api`、POST制限、空body、GASへの送信形式、正常JSON応答、JSON不正時と通信失敗時の既存エラー契約を確認します。
 
-クライアント側は、`index.html` 内JavaScriptの構文、same-origin `/api`、既存LocalStorageキー、主要DOM IDを確認します。クライアント分割はこのチェックを通した状態から段階的に進めます。
+クライアント側は、`index.html` のインラインJavaScriptに加えて、今後分離する `client/*.js` も構文確認対象にします。same-origin `/api`、既存LocalStorageキー、主要DOM ID、天気判定・bootstrap周辺の主要関数と既存閾値を横断的に確認し、外部JSへ分離した場合は `index.html` から実際に読み込まれていることも確認します。
+
+クライアント分割は、DOM ID、state構造、LocalStorageキー、API payload、既存UI挙動を維持しながら、小さい責務単位で段階的に進めます。
