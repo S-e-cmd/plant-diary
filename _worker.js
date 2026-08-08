@@ -1,4 +1,4 @@
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdwRh9gKVnNcRKQwvf22zuXBQLAM1pm4NuiXfPWIDdj884SWzlWIb4lGeu7XdSVPlcWQ/exec'; // build: 2026-07-19-v20
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdwRh9gKVnNcRKQwvf22zuXBQLAM1pm4NuiXfPWIDdj884SWzlWIb4lGeu7XdSVPlcWQ/exec'; // build: 2026-08-08-v21
 const API_PATH = '/api';
 const API_METHOD = 'POST';
 
