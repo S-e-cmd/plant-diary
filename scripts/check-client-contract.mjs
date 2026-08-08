@@ -1,37 +1,53 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 
-const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const rootDir = dirname(scriptDir);
+const indexPath = join(rootDir, 'index.html');
+const clientDir = join(rootDir, 'client');
+const html = await readFile(indexPath, 'utf8');
 
 function ok(name) {
   console.log(`ok - ${name}`);
 }
 
-function required(pattern, message) {
-  assert.match(html, pattern, message);
+function required(source, pattern, message) {
+  assert.match(source, pattern, message);
   ok(message);
 }
 
-function requiredFunction(name) {
-  required(
-    new RegExp(`function\\s+${name}\\s*\\(`),
-    `client function ${name} is present`
-  );
+async function readClientFiles() {
+  try {
+    const names = (await readdir(clientDir)).filter(name => name.endsWith('.js')).sort();
+    return Promise.all(
+      names.map(async name => ({ name: `client/${name}`, source: await readFile(join(clientDir, name), 'utf8') }))
+    );
+  } catch (error) {
+    if (error?.code === 'ENOENT') return [];
+    throw error;
+  }
 }
 
-const scriptBlocks = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
-  .map(match => match[1])
-  .filter(source => source.trim());
+const inlineScripts = [...html.matchAll(/<script(?![^>]*\bsrc=)(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
+  .map((match, index) => ({ name: `index.html:inline-script-${index + 1}.js`, source: match[1] }))
+  .filter(item => item.source.trim());
 
-assert.ok(scriptBlocks.length > 0, 'inline client script was not found');
+const clientFiles = await readClientFiles();
+const executableSources = [...inlineScripts, ...clientFiles];
+assert.ok(executableSources.length > 0, 'client JavaScript source was not found');
 
-for (const [index, source] of scriptBlocks.entries()) {
-  new vm.Script(source, { filename: `index.html:inline-script-${index + 1}.js` });
+for (const item of executableSources) {
+  new vm.Script(item.source, { filename: item.name });
 }
-ok('inline client JavaScript parses successfully');
+ok('client JavaScript parses successfully');
 
-required(/const\s+API_URL\s*=\s*['"]\/api['"]\s*;/, 'same-origin /api contract is present');
+const combinedClientSource = executableSources.map(item => item.source).join('\n');
+const contractSource = `${html}\n${combinedClientSource}`;
+
+required(contractSource, /const\s+API_URL\s*=\s*['"]\/api['"]\s*;/, 'same-origin /api contract is present');
 
 for (const key of [
   'plantDiaryCollapsed',
@@ -40,7 +56,7 @@ for (const key of [
   'plantDiarySavedSearches',
   'plantDiaryLastTab'
 ]) {
-  required(new RegExp(key), `LocalStorage contract ${key} is present`);
+  required(contractSource, new RegExp(key), `LocalStorage contract ${key} is present`);
 }
 
 for (const id of [
@@ -62,7 +78,7 @@ for (const id of [
   'modalBody',
   'processing'
 ]) {
-  required(new RegExp(`id=["']${id}["']`), `required DOM id ${id} is present`);
+  required(html, new RegExp(`id=["']${id}["']`), `required DOM id ${id} is present`);
 }
 
 for (const name of [
@@ -80,24 +96,29 @@ for (const name of [
   'applyBootstrap',
   'renderActiveTab'
 ]) {
-  requiredFunction(name);
+  required(
+    combinedClientSource,
+    new RegExp(`function\\s+${name}\\s*\\(`),
+    `client function ${name} is present`
+  );
 }
 
 required(
+  combinedClientSource,
   /weatherRules:\{spray:\{rain:0\.5,rainProbability:40,wind:5\},liquid:\{rain:0\.5,rainProbability:40,wind:5\}\}/,
   'default weather-rule thresholds are preserved'
 );
 required(
+  combinedClientSource,
   /fetch\(API_URL,\{method:'POST',headers:\{'Content-Type':'application\/json'\}/,
   'client API request method and content type are preserved'
 );
-required(
-  /action:'bootstrap'/,
-  'bootstrap API action remains present'
-);
-required(
-  /applyBootstrap\(d\)/,
-  'bootstrap response application remains present'
-);
+required(combinedClientSource, /action:'bootstrap'/, 'bootstrap API action remains present');
+required(combinedClientSource, /applyBootstrap\(d\)/, 'bootstrap response application remains present');
 
-console.log(`checked ${scriptBlocks.length} inline script block(s)`);
+for (const { name } of clientFiles) {
+  const fileName = name.replace('client/', '');
+  required(html, new RegExp(`<script[^>]+src=["']client/${fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`), `client file ${name} is loaded by index.html`);
+}
+
+console.log(`checked ${inlineScripts.length} inline script block(s) and ${clientFiles.length} client file(s)`);
