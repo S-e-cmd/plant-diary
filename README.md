@@ -16,17 +16,28 @@ Cloudflare Pages 配信用のWebアプリです。
 - `index.html`：アプリ画面、クライアント状態、表示・入力処理
 - `_worker.js`：`/api` とGAS間の通信境界、静的アセット配信
 - `scripts/test-worker-contract.mjs`：Worker通信契約の回帰テスト
+- `scripts/check-client-contract.mjs`：クライアント構文・主要契約の静的チェック
+- `package.json`：整備用チェックの統一実行入口
 - `ai-context.json` / `llms.txt`：AI向け引き継ぎ入口
 - `docs/`：現在構成、データ契約、UI制約、整備状況
 
 GASコード、APIキー、スプレッドシート設定はこのリポジトリへ保存しません。
 
-## Worker回帰テスト
+## 整備チェック
 
 Node.js 18以降で、追加パッケージなしで実行できます。
 
 ```bash
-node scripts/test-worker-contract.mjs
+npm test
 ```
 
-確認対象は、静的配信、`OPTIONS /api`、POST制限、空body、GASへの送信形式、正常JSON応答、JSON不正時と通信失敗時の既存エラー契約です。
+個別実行も可能です。
+
+```bash
+npm run test:worker
+npm run test:client
+```
+
+Worker側は、静的配信、`OPTIONS /api`、POST制限、空body、GASへの送信形式、正常JSON応答、JSON不正時と通信失敗時の既存エラー契約を確認します。
+
+クライアント側は、`index.html` 内JavaScriptの構文、same-origin `/api`、既存LocalStorageキー、主要DOM IDを確認します。クライアント分割はこのチェックを通した状態から段階的に進めます。
