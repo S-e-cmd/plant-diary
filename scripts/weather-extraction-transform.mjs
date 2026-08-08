@@ -8,7 +8,7 @@ function weatherRule(kind='spray'){return state.weatherRules[kind]||state.weathe
 function forecastRain(f,kind='spray'){const r=weatherRule(kind);return!!f&&(Number(f.rain||0)>=Number(r.rain)||Number(f.rainProbability||0)>=Number(r.rainProbability)||/雨|雷|雪/.test(f.weather||'')||((f.code>=51&&f.code<=67)||(f.code>=80&&f.code<=82)||f.code>=95))}
 function forecastStrongWind(f,kind='spray'){return!!f&&Number(f.maxWind??f.wind)>=Number(weatherRule(kind).wind)}
 function weatherWorkRisk(f,kind='spray'){return forecastRain(f,kind)||forecastStrongWind(f,kind)}
-function riskReason(f,kind='spray'){return[forecastRain(f,kind)?'雨':'',forecastStrongWind(f,kind)?\`強風\${Number(f.maxWind??f.wind).toFixed(1)}m/s\`:''].filter(Boolean).join('・')}
+function riskReason(f,kind='spray'){return[forecastRain(f,kind)?'雨':'',forecastStrongWind(f,kind)?\`強風\${Number(f.maxWind??f.wind).toFixed(1)}m/s\`:'' ].filter(Boolean).join('・')}
 function isWeatherSensitivePlan(x){return!!x&&(x.category==='消毒'||x.category==='液肥'||x.pesticide||x.liquidFertilizer)}
 function planWeatherKind(x){return x&&(x.category==='液肥'||x.liquidFertilizer)&&!(x.category==='消毒'||x.pesticide)?'liquid':'spray'}
 function safeWindows(date,kind){const rows=state.forecastHourly.filter(x=>String(x.datetime||'').slice(0,10)===date).filter(x=>{const h=new Date(x.datetime).getHours();return h>=6&&h<=18&&!weatherWorkRisk(x,kind)});if(!rows.length)return'候補なし';const hours=rows.map(x=>new Date(x.datetime).getHours()).sort((a,b)=>a-b),groups=[];hours.forEach(h=>{const g=groups.at(-1);if(g&&h<=g[1]+3)g[1]=h;else groups.push([h,h])});return groups.map(g=>\`\${g[0]}〜\${Math.min(g[1]+3,21)}時\`).join('、')}`;
