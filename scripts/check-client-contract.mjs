@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import vm from 'node:vm';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -23,7 +24,7 @@ async function readClientFiles() {
   try {
     const names = (await readdir(clientDir)).filter(name => name.endsWith('.js')).sort();
     return Promise.all(
-      names.map(async name => ({ name: `client/${name}`, source: await readFile(join(clientDir, name), 'utf8') }))
+      names.map(async name => ({ name: `client/${name}`, path: join(clientDir, name), source: await readFile(join(clientDir, name), 'utf8') }))
     );
   } catch (error) {
     if (error?.code === 'ENOENT') return [];
@@ -36,14 +37,18 @@ const inlineScripts = [...html.matchAll(/<script(?![^>]*\bsrc=)(?:\s[^>]*)?>([\s
   .filter(item => item.source.trim());
 
 const clientFiles = await readClientFiles();
-const executableSources = [...inlineScripts, ...clientFiles];
-assert.ok(executableSources.length > 0, 'client JavaScript source was not found');
+assert.ok(inlineScripts.length + clientFiles.length > 0, 'client JavaScript source was not found');
 
-for (const item of executableSources) {
+for (const item of inlineScripts) {
   new vm.Script(item.source, { filename: item.name });
+}
+for (const item of clientFiles) {
+  const result = spawnSync(process.execPath, ['--check', item.path], { encoding: 'utf8' });
+  assert.equal(result.status, 0, `${item.name} failed module syntax check:\n${result.stderr || result.stdout}`);
 }
 ok('client JavaScript parses successfully');
 
+const executableSources = [...inlineScripts, ...clientFiles];
 const combinedClientSource = executableSources.map(item => item.source).join('\n');
 const contractSource = `${html}\n${combinedClientSource}`;
 
@@ -116,9 +121,10 @@ required(
 required(combinedClientSource, /action:'bootstrap'/, 'bootstrap API action remains present');
 required(combinedClientSource, /applyBootstrap\(d\)/, 'bootstrap response application remains present');
 
-for (const { name } of clientFiles) {
-  const fileName = name.replace('client/', '');
-  required(html, new RegExp(`<script[^>]+src=["']client/${fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`), `client file ${name} is loaded by index.html`);
+const runtimeWired = html.includes("import('./client/weather-runtime.js')");
+if (runtimeWired) {
+  required(html, /import\(['"]\.\/client\/weather-runtime\.js['"]\)/, 'weather runtime module is loaded by index.html');
+  required(combinedClientSource, /from ['"]\.\/weather-utils\.js['"]/, 'weather runtime imports weather-utils.js');
 }
 
 console.log(`checked ${inlineScripts.length} inline script block(s) and ${clientFiles.length} client file(s)`);
