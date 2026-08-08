@@ -19,7 +19,8 @@
     "architecture": "docs/ARCHITECTURE.md",
     "dataContract": "docs/DATA_CONTRACT.md",
     "uiRules": "docs/UI_RULES.md",
-    "projectStatus": "docs/PROJECT_STATUS.md"
+    "projectStatus": "docs/PROJECT_STATUS.md",
+    "majorChangeHandoff": "docs/MAJOR_CHANGE_HANDOFF.md"
   },
   "maintenance": {
     "splitByResponsibility": true,
@@ -42,6 +43,8 @@
   "handoff": {
     "readLocalContextFirst": true,
     "thenReadParentManifest": true,
-    "latestParentRulesDoNotByThemselvesJustifyExistingAppRestructure": true
+    "latestParentRulesDoNotByThemselvesJustifyExistingAppRestructure": true,
+    "recheckParentMajorChangePlanningBeforeMajorArchitectureOrTransitionWork": true,
+    "majorChangeCandidateBoundariesAreNotAuthorization": true
   }
 }
