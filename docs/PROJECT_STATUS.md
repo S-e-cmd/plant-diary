@@ -1,106 +1,70 @@
 # Project Status
 
 Updated: 2026-08-08
-Client build marker: `2026-07-19-v29`
+Client build marker: `20260808-01`
 Worker build marker: `2026-08-08-v21`
 
 ## Current state
 
 - Cloudflare Pages deployment with no framework build step.
 - `main` is the production branch and deploys automatically.
-- `index.html` still contains the deployed client application and its current client build marker.
-- `_worker.js` is the same-origin `/api` transport boundary to the existing GAS backend and delegates non-API requests to static assets.
-- The existing App Checker workflow is manual-only and is not the deployment mechanism.
-- Local handoff documents are present, including the app-specific Major Change handoff required by the current parent starter.
+- `_worker.js` remains the same-origin `/api` transport boundary to the existing GAS backend.
+- Weather decision helpers are now separated from `index.html`.
+- `index.html` dynamically loads `client/weather-runtime.js`, which delegates weather calculations to `client/weather-utils.js`.
+- The previous inline implementations of weather naming, rain/wind risk, work risk, plan weather kind, and `safeWindows()` have been removed from `index.html`.
 
-## Protected contracts
+## Weather extraction result
 
-Ordinary maintenance must preserve unless explicitly changed by the current task:
+The weather helper switch was executed on one checkout using the prepared exact-match migration.
 
-- same-origin `POST /api` browser contract;
-- Worker-to-GAS request format and JSON response behavior;
-- existing data/storage compatibility, IDs, date formats, and LocalStorage keys;
-- current Cloudflare Pages publication route and deployment method;
-- major DOM IDs and existing client interaction behavior;
-- GAS and spreadsheet internals, which remain outside this repository.
+Startup order after the switch is:
 
-See `docs/DATA_CONTRACT.md`, `docs/UI_RULES.md`, and `docs/MAJOR_CHANGE_HANDOFF.md` for detailed boundaries.
+1. `startApp()` enables the initialization overlay.
+2. `initializeWeatherRuntime()` loads `client/weather-runtime.js`.
+3. The runtime adapter binds the existing helper names to `client/weather-utils.js` while reading live `state.weatherRules` and `state.forecastHourly`.
+4. Saved last-tab state is restored.
+5. Saved input draft state is restored.
+6. `bootstrap()` runs.
 
-## Completed maintenance
+The existing API payloads, LocalStorage keys, DOM IDs, record formats, weather thresholds, and Worker/GAS contract were not changed by this extraction.
 
-### Worker boundary
+## Verification result
 
-`_worker.js` was reorganized without changing its public API contract. Route selection, API validation/orchestration, GAS transport, JSON parsing, and response formatting are separated. Worker build marker is `2026-08-08-v21`.
+Executed before the runtime switch:
 
-The Worker contract regression test was executed after that refactor and all seven checks passed.
+- unified `npm test`: passed;
+- handoff contract: passed;
+- Worker contract: all seven checks passed;
+- client syntax/API/LocalStorage/DOM contract checks: passed;
+- weather utility contract: passed;
+- semantic parity with the previous inline implementation: passed;
+- weather runtime adapter contract: passed;
+- extraction dry-run: passed;
+- staged extraction parity check: passed.
 
-### Regression safety
+Executed immediately after the runtime switch:
 
-The repository now contains maintenance checks for:
+- unified `npm test`: passed;
+- Worker contract: all seven checks passed;
+- client syntax/API/LocalStorage/DOM contract checks: passed;
+- dynamic loading of `client/weather-runtime.js`: confirmed;
+- import path from `weather-runtime.js` to `weather-utils.js`: confirmed;
+- weather utility contract: passed;
+- semantic parity for weather display naming, rain judgment, strong-wind judgment, work-risk judgment, plan weather kind, and `safeWindows()`: passed;
+- weather runtime adapter contract: passed;
+- switched extraction parity check: passed;
+- transformed client JavaScript syntax and initialization ordering: passed.
 
-- handoff and Major Change guidance consistency;
-- Worker transport contract;
-- client syntax and important DOM/API/LocalStorage contracts;
-- staged weather utility behavior;
-- semantic parity between the current inline weather implementation and extracted weather utilities across weather-code, rain, probability, wind, plan-kind, and safe-window boundary cases;
-- weather runtime compatibility behavior;
-- weather extraction dry-run transformation;
-- weather extraction parity in both staged and switched states;
-- existence and required safety markers of the weather extraction runbook.
+During the required pre/post execution, existing maintenance tests exposed three test-harness issues: ES modules were being parsed as classic scripts, truthy return semantics were asserted as strict booleans, and time-dependent tests inherited the runner's UTC timezone. These were corrected without changing the application weather behavior. The exact-match transform was also aligned to the confirmed current inline source before application.
 
-`package.json` exposes these through `npm test` and individual `test:*` commands. No external package dependency or build step has been introduced.
+## Remaining verification
 
-### Client weather extraction preparation
-
-The first client responsibility selected for extraction is weather decision logic.
-
-- `client/weather-utils.js` contains pure weather helper logic.
-- `client/weather-runtime.js` preserves current call signatures while reading live `weatherRules` and `forecastHourly` state.
-- `scripts/test-weather-semantic-parity.mjs` keeps a reference copy of the currently confirmed inline behavior and compares the extracted utilities against it over boundary-focused vectors.
-- `scripts/weather-extraction-transform.mjs` is the single source of truth for the fail-closed transformation.
-- `scripts/apply-weather-extraction.mjs` only reads `index.html`, calls the shared transform, and writes the verified result.
-- `scripts/test-weather-extraction-dry-run.mjs` applies the same transform in memory without touching `index.html`, parses the transformed inline client script with `new Function(...)`, and verifies weather initialization occurs before bootstrap.
-- `test-weather-parity.mjs` accepts either a fully staged or fully switched state and rejects mixed/partial states.
-- `docs/WEATHER_EXTRACTION_RUNBOOK.md` records the exact apply, verification, stop, and rollback procedure for this extraction.
-- `ai-context.json` references that runbook, and `scripts/check-handoff-contract.mjs` now fails if the reference or required safety markers drift.
-
-Earlier review caught and corrected a proposed top-level `await import(...)` syntax error before runtime activation. The current transform uses async `initializeWeatherRuntime()` plus guarded `startApp()` instead.
-
-The staged files are still **not wired into deployed `index.html`**. Therefore client runtime and client build marker remain unchanged.
-
-### Current parent starter alignment
-
-The latest checked parent starter commit remains `0a7f13f1fc4acd837df370a29c13d102beebe12e` (`Check app-specific major change handoff during alignment`).
-
-This repository retains app-specific protected boundaries and candidate Major Change boundaries while keeping the shared Major Change procedure in the parent starter as source of truth. Candidate boundaries do not by themselves mean `major-change-planning-required` and do not authorize implementation or migration.
-
-## Verification status
-
-Verified:
-
-- current repository structure and handoff files;
-- Worker refactor source;
-- Worker transport regression test: seven checks passed;
-- current parent starter latest commit and app-specific handoff requirement;
-- handoff check is part of unified `npm test`;
-- weather extraction transform, compatibility adapter, semantic parity test, dry-run test, parity test, application script, and rollback runbook exist in the repository;
-- the extracted weather implementation has been source-reviewed against the current inline implementation and the semantic parity test now encodes that comparison for execution on a checkout;
-- the handoff checker verifies the runbook reference and required apply/rollback/build markers.
-
-Not yet verified by execution in the current connected environment:
-
-- full `npm test` after the latest additions;
-- semantic parity and dry-run tests against a local repository checkout;
-- actual weather runtime switch in `index.html`;
-- browser regression after that future client switch.
-
-The available execution environment cannot currently obtain a GitHub checkout, so unexecuted checks must not be reported as passed.
+Automated regression checks and the actual source switch are complete. A live browser session was not executed by the repository test runner, so visual rendering against the deployed site remains outside the automated result recorded here.
 
 ## Current scope decision
 
-- Maintenance need: medium.
-- Scope completion: incomplete.
-- Recommended action: continue.
-- Major Change Planning: not applicable to the current staged responsibility extraction.
-
-The next runtime-changing step remains the weather helper switch. It should only be committed after pre-change `npm test`, the exact-match transformation, and post-change `npm test` can all run against the same checkout. Until then, additional staged client modules should not be added merely to increase file separation.
+- Weather extraction: complete.
+- Client build: `20260808-01`.
+- Old inline weather-helper duplication: removed.
+- Major Change Planning: not applicable.
+- Recommended action for this batch: finish.
