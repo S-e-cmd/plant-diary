@@ -1,3 +1,5 @@
+process.env.TZ='Asia/Tokyo';
+
 import assert from 'node:assert/strict';
 import {
   forecastWeatherName,
