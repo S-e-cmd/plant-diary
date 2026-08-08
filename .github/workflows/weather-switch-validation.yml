@@ -1,0 +1,54 @@
+name: Temporary weather switch validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-apply:
+    if: github.head_ref == 'maintenance/weather-switch-20260808'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Pre-change tests
+        run: npm test
+      - name: Apply weather extraction when still staged
+        id: apply
+        shell: bash
+        run: |
+          if grep -q 'build: 2026-07-19-v29 / performance optimization' index.html; then
+            npm run maintenance:apply-weather-extraction
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Post-change tests
+        run: npm test
+      - name: Verify runtime switch
+        shell: bash
+        run: |
+          grep -q 'build: 20260808-01 / weather helper extraction' index.html
+          grep -q "import('./client/weather-runtime.js')" index.html
+          ! grep -q "function forecastRain(f,kind='spray')" index.html
+          ! grep -q "function safeWindows(date,kind)" index.html
+          git diff --check
+      - name: Commit switched index only
+        if: steps.apply.outputs.changed == 'true'
+        shell: bash
+        run: |
+          changed="$(git diff --name-only)"
+          test "$changed" = 'index.html'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Switch client weather helpers to weather utils runtime'
+          git push origin HEAD:${{ github.head_ref }}
