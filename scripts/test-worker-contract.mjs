@@ -1,0 +1,138 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+
+const source = await readFile(new URL('../_worker.js', import.meta.url), 'utf8');
+const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
+const { default: worker } = await import(moduleUrl);
+
+const originalFetch = globalThis.fetch;
+const request = (path, init = {}) => new Request(`https://example.test${path}`, init);
+const json = async response => JSON.parse(await response.text());
+
+async function run(name, test) {
+  try {
+    await test();
+    console.log(`ok - ${name}`);
+  } catch (error) {
+    console.error(`not ok - ${name}`);
+    throw error;
+  }
+}
+
+try {
+  await run('non-api requests are delegated to static assets', async () => {
+    let delegated = false;
+    const env = {
+      ASSETS: {
+        fetch: async req => {
+          delegated = req.url.endsWith('/asset.css');
+          return new Response('asset', { status: 200 });
+        }
+      }
+    };
+
+    const response = await worker.fetch(request('/asset.css'), env);
+    assert.equal(delegated, true);
+    assert.equal(await response.text(), 'asset');
+  });
+
+  await run('OPTIONS /api returns 204 without upstream fetch', async () => {
+    globalThis.fetch = async () => {
+      throw new Error('upstream should not be called');
+    };
+
+    const response = await worker.fetch(
+      request('/api', { method: 'OPTIONS' }),
+      { ASSETS: { fetch: originalFetch } }
+    );
+
+    assert.equal(response.status, 204);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+  });
+
+  await run('non-POST /api returns 405', async () => {
+    const response = await worker.fetch(
+      request('/api', { method: 'GET' }),
+      { ASSETS: { fetch: originalFetch } }
+    );
+
+    assert.equal(response.status, 405);
+    assert.deepEqual(await json(response), {
+      ok: false,
+      error: 'POSTのみ利用できます。'
+    });
+  });
+
+  await run('empty POST /api returns 400', async () => {
+    const response = await worker.fetch(
+      request('/api', { method: 'POST', body: '' }),
+      { ASSETS: { fetch: originalFetch } }
+    );
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await json(response), {
+      ok: false,
+      error: '送信内容が空です。'
+    });
+  });
+
+  await run('valid GAS JSON is passed through with upstream status', async () => {
+    let upstream;
+    globalThis.fetch = async (url, init) => {
+      upstream = { url, init };
+      return new Response(
+        JSON.stringify({ ok: true, data: { value: 1 } }),
+        { status: 200 }
+      );
+    };
+
+    const body = JSON.stringify({ action: 'bootstrap' });
+    const response = await worker.fetch(
+      request('/api', { method: 'POST', body }),
+      { ASSETS: { fetch: originalFetch } }
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(upstream.init.method, 'POST');
+    assert.equal(upstream.init.headers['Content-Type'], 'text/plain;charset=utf-8');
+    assert.equal(upstream.init.body, body);
+    assert.deepEqual(await json(response), {
+      ok: true,
+      data: { value: 1 }
+    });
+  });
+
+  await run('invalid GAS JSON returns the existing 502 contract', async () => {
+    globalThis.fetch = async () => new Response('<html>not json</html>', { status: 200 });
+
+    const response = await worker.fetch(
+      request('/api', { method: 'POST', body: '{}' }),
+      { ASSETS: { fetch: originalFetch } }
+    );
+
+    assert.equal(response.status, 502);
+    assert.deepEqual(await json(response), {
+      ok: false,
+      error: 'GASからJSONが返りませんでした。GASの再デプロイと公開範囲を確認してください。'
+    });
+  });
+
+  await run('upstream fetch failure returns the existing 502 contract', async () => {
+    globalThis.fetch = async () => {
+      throw new Error('network down');
+    };
+
+    const response = await worker.fetch(
+      request('/api', { method: 'POST', body: '{}' }),
+      { ASSETS: { fetch: originalFetch } }
+    );
+
+    assert.equal(response.status, 502);
+    assert.deepEqual(await json(response), {
+      ok: false,
+      error: 'GASとの通信に失敗しました: network down'
+    });
+  });
+} finally {
+  globalThis.fetch = originalFetch;
+}
