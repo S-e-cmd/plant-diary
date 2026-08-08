@@ -125,6 +125,11 @@ const runtimeWired = html.includes("import('./client/weather-runtime.js')");
 if (runtimeWired) {
   required(html, /import\(['"]\.\/client\/weather-runtime\.js['"]\)/, 'weather runtime module is loaded by index.html');
   required(combinedClientSource, /from ['"]\.\/weather-utils\.js['"]/, 'weather runtime imports weather-utils.js');
+  required(
+    html,
+    /if\(savedDraft\)\{\$\$\('\[data-input-type\]'\)\.forEach\(/,
+    'saved draft restoration still updates all input-type controls'
+  );
 }
 
 console.log(`checked ${inlineScripts.length} inline script block(s) and ${clientFiles.length} client file(s)`);
