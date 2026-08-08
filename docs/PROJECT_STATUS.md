@@ -40,6 +40,17 @@ Changed `_worker.js` without changing the external API contract:
 
 No GAS endpoint, API payload schema, storage format, UI markup, client state shape, Cloudflare setting, production resource, or GitHub Actions behavior was changed.
 
+## 2026-08-08 maintenance batch 3
+
+Added regression safety checks before touching the responsibility-heavy client file.
+
+- `scripts/test-worker-contract.mjs` verifies static asset delegation, `OPTIONS /api`, method restriction, empty-body handling, GAS forwarding format, valid JSON pass-through, invalid JSON handling, and upstream failure handling.
+- The Worker contract test was executed against the current refactored Worker source and all seven checks passed.
+- `scripts/check-client-contract.mjs` was added to parse inline client JavaScript and assert important current contracts such as same-origin `/api`, LocalStorage keys, and required DOM IDs.
+- README now documents the maintenance files and the Worker regression test command.
+
+The client contract checker is intentionally a guard before client extraction. Its addition does not change runtime behavior. Repository-side execution of that checker remains pending until the current `index.html` is available in an execution environment; it must not be reported as verified until actually run.
+
 ## Confirmed client maintenance observations
 
 The client code has been inspected beyond file size alone. Confirmed responsibilities currently co-located in `index.html` include:
@@ -56,9 +67,10 @@ These are real responsibility boundaries, so incremental extraction is eligible 
 ## Verification status
 
 - Current Worker source after refactor: verified from repository state.
-- Worker JavaScript syntax: verified with `node --check` against the applied source structure.
-- Existing `/api` route/method/body/upstream/response contract: verified by before/after source comparison.
-- Client runtime source: inspected; no client runtime change was made in batch 2.
+- Existing Worker transport contract: verified by executable regression test, seven checks passed.
+- Existing `/api` route/method/body/upstream/response contract: verified.
+- Client static contract checker: implemented; execution pending, not yet counted as verified.
+- Client runtime source: inspected; no client runtime change was made in batch 3.
 - Production browser regression after Worker deployment: pending because the connected GitHub tool does not provide the deployed Cloudflare runtime state.
 - External GAS/spreadsheet internals: not inspected; unchanged and outside the code-maintenance change.
 
@@ -67,11 +79,12 @@ These are real responsibility boundaries, so incremental extraction is eligible 
 - Maintenance need: medium.
 - Scope completion: incomplete.
 - Recommended action: continue.
-- Reason: code maintenance is explicitly in scope, and confirmed client responsibilities remain co-located in `index.html`. The next eligible work is incremental client-side separation that preserves existing behavior and contracts, not exploratory inspection merely because the file is large.
+- Reason: code maintenance is explicitly in scope, the Worker boundary now has a regression safety net, and confirmed client responsibilities remain co-located in `index.html`. The next client change should occur only after the client contract checker can be executed against the current source.
 
 ## Next maintenance batch
 
-- extract a small, cohesive client responsibility whose dependencies are already confirmed;
+- execute the client contract checker against the current `index.html`;
+- if it passes, extract one small cohesive client responsibility with closed dependencies;
 - preserve current DOM IDs, state shape, LocalStorage keys, API payloads, and event behavior;
 - update the client build marker when a deployed client asset changes;
-- perform syntax and affected-path regression verification before taking another responsibility.
+- re-run client contract and affected-path checks before taking another responsibility.
