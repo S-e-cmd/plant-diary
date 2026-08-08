@@ -8,6 +8,7 @@ const requiredFiles = [
   'docs/UI_RULES.md',
   'docs/PROJECT_STATUS.md',
   'docs/MAJOR_CHANGE_HANDOFF.md',
+  'docs/WEATHER_EXTRACTION_RUNBOOK.md',
 ];
 
 for (const file of requiredFiles) {
@@ -18,7 +19,10 @@ const context = JSON.parse(fs.readFileSync('ai-context.json', 'utf8'));
 if (context?.docs?.majorChangeHandoff !== 'docs/MAJOR_CHANGE_HANDOFF.md') {
   throw new Error('ai-context.json must reference docs/MAJOR_CHANGE_HANDOFF.md');
 }
-if (context?.handoff?.recheckLatestParentBeforeMajorChange !== true) {
+if (context?.docs?.weatherExtractionRunbook !== 'docs/WEATHER_EXTRACTION_RUNBOOK.md') {
+  throw new Error('ai-context.json must reference docs/WEATHER_EXTRACTION_RUNBOOK.md');
+}
+if (context?.handoff?.recheckParentMajorChangePlanningBeforeMajorArchitectureOrTransitionWork !== true) {
   throw new Error('ai-context.json must require latest parent re-check before major change');
 }
 
@@ -30,6 +34,17 @@ for (const marker of ['MAJOR_CHANGE_PLANNING.md', 'PROTOCOL_ROUTING_RULES.md']) 
 const major = fs.readFileSync('docs/MAJOR_CHANGE_HANDOFF.md', 'utf8');
 for (const marker of ['/api', 'LocalStorage', 'Cloudflare Pages', 'GAS', 'major-change-planning-required']) {
   if (!major.includes(marker)) throw new Error(`Major-change handoff is missing protected-boundary marker: ${marker}`);
+}
+
+const runbook = fs.readFileSync('docs/WEATHER_EXTRACTION_RUNBOOK.md', 'utf8');
+for (const marker of [
+  'npm test',
+  'maintenance:apply-weather-extraction',
+  'rollback',
+  '2026-07-19-v29',
+  '20260808-01',
+]) {
+  if (!runbook.includes(marker)) throw new Error(`Weather extraction runbook is missing safety marker: ${marker}`);
 }
 
 console.log('handoff contract: ok');
