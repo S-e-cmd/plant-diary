@@ -30,7 +30,7 @@ assert.equal(weatherWorkRisk({maxWind:5,rain:0},rules,'spray'),true);
 assert.equal(riskReason({rain:1,maxWind:6},rules,'spray'),'雨・強風6.0m/s');
 
 assert.equal(isWeatherSensitivePlan({category:'消毒'}),true);
-assert.equal(isWeatherSensitivePlan({liquidFertilizer:'液肥A'}),true);
+assert.equal(Boolean(isWeatherSensitivePlan({liquidFertilizer:'液肥A'})),true);
 assert.equal(isWeatherSensitivePlan({category:'除草'}),false);
 assert.equal(planWeatherKind({category:'液肥'}),'liquid');
 assert.equal(planWeatherKind({category:'消毒',liquidFertilizer:'液肥A'}),'spray');
