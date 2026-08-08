@@ -7,7 +7,7 @@
     "test:handoff": "node scripts/check-handoff-contract.mjs",
     "test:worker": "node scripts/test-worker-contract.mjs",
     "test:client": "node scripts/check-client-contract.mjs",
-    "test:weather": "node scripts/test-weather-utils.mjs && node scripts/test-weather-runtime.mjs && node scripts/test-weather-parity.mjs",
+    "test:weather": "node scripts/test-weather-utils.mjs && node scripts/test-weather-runtime.mjs && node scripts/test-weather-extraction-dry-run.mjs && node scripts/test-weather-parity.mjs",
     "maintenance:apply-weather-extraction": "node scripts/apply-weather-extraction.mjs"
   },
   "engines": {
