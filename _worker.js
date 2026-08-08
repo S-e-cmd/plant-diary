@@ -1,5 +1,6 @@
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdwRh9gKVnNcRKQwvf22zuXBQLAM1pm4NuiXfPWIDdj884SWzlWIb4lGeu7XdSVPlcWQ/exec'; // build: 2026-08-08-v21
-const API_PATH = '/api';
+import { GasResponseError, fetchGas, parseGasJson } from './worker/gas-transport.js';
+
+const API_PATH = '/api'; // build: 2026-08-08-v22
 const API_METHOD = 'POST';
 
 export default {
@@ -29,8 +30,8 @@ async function handleApiRequest_(request) {
   }
 
   try {
-    const gasResponse = await fetchGas_(body);
-    const data = await parseGasJson_(gasResponse);
+    const gasResponse = await fetchGas(body);
+    const data = await parseGasJson(gasResponse);
     return json_(data, gasResponse.ok ? 200 : gasResponse.status);
   } catch (error) {
     if (error instanceof GasResponseError) {
@@ -43,29 +44,6 @@ async function handleApiRequest_(request) {
     }, 502);
   }
 }
-
-function fetchGas_(body) {
-  return fetch(GAS_URL, {
-    method: API_METHOD,
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body,
-    redirect: 'follow'
-  });
-}
-
-async function parseGasJson_(response) {
-  const text = await response.text();
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new GasResponseError(
-      'GASからJSONが返りませんでした。GASの再デプロイと公開範囲を確認してください。'
-    );
-  }
-}
-
-class GasResponseError extends Error {}
 
 function json_(data, status = 200) {
   return new Response(JSON.stringify(data), {
