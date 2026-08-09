@@ -12,6 +12,7 @@ Worker build marker: `2026-08-08-v22`
 - Weather decision helpers are separated from `index.html` through `client/weather-runtime.js` and `client/weather-utils.js`.
 - Browser Blob download mechanics are separated into `client/download-utils.js`; CSV row selection, columns, filename pattern, and formatting remain unchanged.
 - `client/log-date-utils.js` contains staged pure helpers for log period boundaries, relative-day labels, and plan timing classification. Runtime still uses the current inline functions until the guarded switch is applied.
+- `client/quick-input-utils.js` now contains staged quick-input helpers for key generation, template normalization, and favorite matching. Runtime still uses the existing inline quick-input functions.
 - AI handoff files are present and reference the parent starter instead of copying shared protocol rules into this repository.
 
 ## Completed alignment work
@@ -51,9 +52,20 @@ Worker build marker: `2026-08-08-v22`
 - `scripts/log-date-extraction-transform.mjs` defines a fail-closed exact-match transform for the eventual runtime switch. It refuses to continue when the current source differs or a target fragment is non-unique.
 - `scripts/test-log-date-extraction-dry-run.mjs` supports both staged and switched states and verifies that the switched source removes the three inline helpers, initializes `client/log-date-utils.js`, updates the client build marker to `20260809-03`, and remains parsable.
 - `scripts/apply-log-date-extraction.mjs` is the single apply entrypoint and `npm run maintenance:apply-log-date-extraction` exposes it.
-- `scripts/test-log-contract.mjs` now supports both staged and switched states while continuing to enforce paging/search/sort contracts.
+- `scripts/test-log-contract.mjs` supports both staged and switched states while continuing to enforce paging/search/sort contracts.
 - `docs/LOG_DATE_EXTRACTION_RUNBOOK.md` records required pre-check, apply, post-check, and rollback steps.
 - `npm run test:log` includes the contract, utility, semantic-parity, and dry-run checks.
+
+### Quick-input utility staging
+
+- `client/quick-input-utils.js` stages the pure identity/template part of quick input: `quickKey`, `quickTemplate`, and `isFavorite`.
+- Existing quick-key field order and trimming semantics are preserved.
+- Existing `qid` reuse, generated-ID fallback, default `その他` category, empty-string normalization, and favorite equality behavior are preserved.
+- `scripts/test-quick-input-utils.mjs` checks representative key/template/favorite behavior.
+- `scripts/test-quick-input-semantic-parity.mjs` compares the staged module against the current inline implementation across empty, watering, pesticide, and liquid-fertilizer examples.
+- The staged helpers were independently smoke-tested in Node and matched the expected current behavior.
+- `npm run test:quick` runs both quick-input tests, and unified `npm test` now includes it.
+- Runtime wiring is intentionally deferred; `index.html` is unchanged and Client Build remains `20260809-02`.
 
 ## Verification coverage in repository
 
@@ -70,9 +82,10 @@ It covers:
 - client syntax and protected client contracts, including external `client/*.js` syntax and extracted-responsibility wiring;
 - browser download utility behavior;
 - log period/paging/plan-timing migration guards, staged utility behavior, semantic parity, and extraction dry-run;
+- quick-input utility behavior and semantic parity;
 - weather utility/runtime/parity checks and extraction safeguards.
 
-A full repository `npm test` cannot currently be executed from the available connector-only environment because a local checkout cannot reach GitHub. A temporary GitHub Actions execution path was also attempted on an isolated branch, but workflow runs were not triggered through the current connection path; the temporary workflow was removed and was not merged. Therefore the runtime switch is not claimed as verified or applied.
+A full repository `npm test` cannot currently be executed from the available connector-only environment because a local checkout cannot reach GitHub. A temporary GitHub Actions execution path was also attempted on an isolated branch, but workflow runs were not triggered through the current connection path; the temporary workflow was removed and was not merged. Therefore the log-date runtime switch is not claimed as verified or applied.
 
 ## Protected contracts
 
@@ -84,14 +97,16 @@ Current maintenance must continue to preserve unless explicitly changed:
 - existing DOM IDs and primary UI behavior;
 - record/date formats and CSV export columns/format;
 - log period semantics, 20-item paging size, search-state shape, sort direction, and plan timing classification;
+- quick-input key/template/favorite semantics and LocalStorage compatibility;
 - Cloudflare Pages deployment from `main`.
 
 ## Remaining maintenance
 
 - `index.html` still contains multiple unrelated client responsibilities and remains the main maintainability risk.
 - The log-date module is staged but is not yet wired into runtime; the current inline `dateRange`, `dayDistance`, and `planTiming` remain active.
-- Runtime switching must use `npm run maintenance:apply-log-date-extraction` and the required pre/post `npm test` checks rather than manual broad replacement.
-- Further extraction should remain incremental; rendering, event binding, API mutation, and pure date/paging logic should not be moved as one large batch.
+- The quick-input utility is staged but is not yet wired into runtime; current inline quick-input functions remain active.
+- Runtime switching must use guarded, exact-match changes with pre/post regression checks rather than manual broad replacement.
+- Further extraction should remain incremental; rendering, event binding, API mutation, LocalStorage mutation, and pure helper logic should not be moved as one large batch.
 - No broad rewrite, storage migration, backend replacement, route change, or template-shaped directory migration is justified by the current alignment work.
 
 ## Current scope decision
@@ -103,7 +118,8 @@ Current maintenance must continue to preserve unless explicitly changed:
 - Browser download regression guard: complete.
 - Log-view extraction guard: complete.
 - Log-date pure utility staging and semantic parity: complete.
-- Guarded runtime-switch command, dual-state tests, and runbook: complete and present on `main`.
-- Runtime switch to `client/log-date-utils.js`: not yet applied because neither a complete local checkout nor a triggerable repository execution path is available in the current environment.
+- Guarded log-date runtime-switch command, dual-state tests, and runbook: complete and present on `main`.
+- Quick-input pure utility staging and semantic parity: complete.
+- Runtime switch to staged log-date/quick-input modules: not yet applied because neither a complete local checkout nor a triggerable repository execution path is available in the current environment.
 - Major Change Planning: not applicable to the current maintenance scope.
-- Recommended next batch: execute the prepared fail-closed log-date extraction in an environment that can run the repository checkout, run `npm test` before and after, and only then promote the client build to `20260809-03`.
+- Recommended next batch: continue staging another small pure client responsibility or strengthen guarded runtime-switch coverage without changing production behavior until full pre/post regression execution is available.
