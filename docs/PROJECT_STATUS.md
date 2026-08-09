@@ -36,11 +36,18 @@ Worker build marker: `2026-08-08-v22`
 
 ### Browser download regression guard
 
-- `scripts/check-client-contract.mjs` now verifies that `index.html` loads and initializes `client/download-utils.js` before bootstrap.
+- `scripts/check-client-contract.mjs` verifies that `index.html` loads and initializes `client/download-utils.js` before bootstrap.
 - The client contract check verifies that CSV export delegates to `downloadBrowserBlob()` and rejects reintroduction of direct `new Blob(...)` handling into `index.html`.
 - `scripts/test-download-utils.mjs` directly verifies Blob content/MIME type, anchor creation, filename assignment, click triggering, and object URL cleanup.
-- `npm test` now includes `npm run test:download`.
-- The new download utility test was reproduced against the current utility implementation in an isolated Node ESM environment and passed. A full repository `npm test` was not executable from the available connector-only repository environment in this batch.
+- `npm test` includes `npm run test:download`.
+- The download utility test was reproduced against the current utility implementation in an isolated Node ESM environment and passed. A full repository `npm test` was not executable from the connector-only repository environment in that batch.
+
+### Log-view extraction guard
+
+- The next client responsibility selected for incremental cleanup is the log/plan date and paging area rather than the full log renderer at once.
+- `scripts/test-log-contract.mjs` now freezes the current 20-item page size, day/week/month period boundaries, overdue/today/future labels, plan `undated / overdue / today / future` classification, visible-log page calculation, sort direction behavior, and search-state shape.
+- `npm test` includes `npm run test:log` so future extraction must preserve these behaviors before the inline functions are moved.
+- The new test file itself was syntax-checked in Node. Its assertions were matched against the current `index.html` source during this batch; a full repository `npm test` was not executable from the connector-only repository environment.
 
 ## Verification coverage in repository
 
@@ -56,6 +63,7 @@ It covers:
 - Worker/API contract scenarios;
 - client syntax and protected client contracts, including external `client/*.js` syntax and extracted-responsibility wiring;
 - browser download utility behavior;
+- log period/paging/plan-timing migration guards;
 - weather utility/runtime/parity checks and extraction safeguards.
 
 The Worker contract suite covers static delegation, `OPTIONS /api`, non-POST rejection, empty POST rejection, GAS request forwarding, valid JSON pass-through, invalid upstream JSON, and upstream transport failure.
@@ -69,12 +77,14 @@ Current maintenance must continue to preserve unless explicitly changed:
 - LocalStorage keys and saved client state compatibility;
 - existing DOM IDs and primary UI behavior;
 - record/date formats and CSV export columns/format;
+- log period semantics, paging size, search-state shape, sort direction, and plan timing classification;
 - Cloudflare Pages deployment from `main`.
 
 ## Remaining maintenance
 
 - `index.html` still contains multiple unrelated client responsibilities and remains the main maintainability risk.
-- Further extraction should stay incremental and target cohesive client responsibilities with confirmed dependency boundaries.
+- The log/plan date and paging behavior is now guarded and is the preferred next extraction target.
+- Further extraction should remain incremental; rendering, event binding, API mutation, and pure date/paging logic should not be moved as one large batch.
 - No broad rewrite, storage migration, backend replacement, route change, or template-shaped directory migration is justified by the current alignment work.
 
 ## Current scope decision
@@ -84,5 +94,6 @@ Current maintenance must continue to preserve unless explicitly changed:
 - Worker/GAS transport extraction: complete and present on `main`.
 - Browser download utility extraction: complete.
 - Browser download regression guard: complete.
+- Log-view extraction guard: complete.
 - Major Change Planning: not applicable to the current maintenance scope.
-- Recommended next batch: continue incremental client responsibility extraction from `index.html`, choosing a self-contained area with existing contract coverage before changing behavior.
+- Recommended next batch: extract the now-guarded pure log/plan date and paging helpers from `index.html` without changing renderer, event, API, storage, or UI behavior.
