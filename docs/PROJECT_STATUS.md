@@ -6,120 +6,64 @@ Worker build marker: `2026-08-08-v22`
 
 ## Current state
 
-- Cloudflare Pages deployment with no framework build step.
-- `main` is the production branch and deploys automatically.
-- `_worker.js` is the same-origin `/api` boundary and delegates upstream GAS transport/parsing to `worker/gas-transport.js`.
-- Weather decision helpers are separated from `index.html` through `client/weather-runtime.js` and `client/weather-utils.js`.
-- Browser Blob download mechanics are separated into `client/download-utils.js`; CSV row selection, columns, filename pattern, and formatting remain unchanged.
-- `client/log-date-utils.js` contains staged pure helpers for log period boundaries, relative-day labels, and plan timing classification. Runtime still uses the current inline functions until the guarded switch is applied.
-- `client/quick-input-utils.js` now contains staged quick-input helpers for key generation, template normalization, and favorite matching. Runtime still uses the existing inline quick-input functions.
-- AI handoff files are present and reference the parent starter instead of copying shared protocol rules into this repository.
+- Cloudflare Pages deployment with no framework build step; `main` is the production branch.
+- `_worker.js` is the same-origin `/api` boundary and delegates GAS transport/parsing to `worker/gas-transport.js`.
+- Weather and browser-download responsibilities are already wired out of `index.html`.
+- `client/log-date-utils.js`, `client/log-filter-utils.js`, and `client/quick-input-utils.js` are staged pure helpers. Runtime still uses the corresponding inline logic until guarded switching can be verified with full pre/post tests.
+- Existing API, LocalStorage, DOM IDs, record formats, CSV behavior, and deployment contract remain unchanged.
 
 ## Completed alignment work
 
-### Weather responsibility extraction
+- Weather helper extraction and regression coverage: complete.
+- Worker/GAS transport extraction and contract coverage: complete.
+- Browser download extraction and regression coverage: complete.
+- Log-date utility staging, semantic parity, fail-closed transform, dual-state tests, and runbook: complete; runtime switch not applied.
+- Quick-input utility staging and semantic parity: complete; runtime switch not applied.
+- Log search/filter/sort/paging utility staging: complete.
+  - `client/log-filter-utils.js` contains `hasActiveSearch`, `matchesSearch`, `filterByDateRange`, `sortLogs`, and `paginateLogs`.
+  - Searchable fields and special spray/liquid filter semantics mirror the current `renderLogs()` implementation.
+  - Period filtering keeps the current rule that normal period views include records with `date` inside the selected range; `startDate` fallback remains search-only.
+  - Ordering keeps the current `date || startDate || ''` key and `desc / asc` direction behavior.
+  - Paging keeps a minimum of one page, clamps the requested page, and preserves the current 20-item page size at the caller/state boundary.
+  - `scripts/test-log-filter-utils.mjs` covers representative filtering, ordering, range, and paging behavior.
+  - `scripts/test-log-filter-semantic-parity.mjs` compares the staged helpers with reference functions copied from the current inline semantics.
+  - `npm run test:log` now includes both log-filter tests.
+  - Runtime wiring is intentionally deferred; `index.html` and Client Build remain `20260809-02`.
 
-- Weather naming, rain/wind risk, work-risk, plan-weather-kind, and safe-window helpers were moved out of the large inline client script.
-- `startApp()` initializes the weather runtime before saved state restoration and `bootstrap()`.
-- Existing weather thresholds, LocalStorage keys, DOM IDs, API payloads, and record formats were preserved.
+## Verification coverage
 
-### Worker/GAS transport extraction
-
-- `_worker.js` retains route selection, request validation, status selection, JSON formatting, and static asset delegation.
-- `worker/gas-transport.js` owns GAS HTTP transport and upstream JSON parsing.
-- Existing `/api` route, POST/content-type/body behavior, response payload shape, cache headers, error messages, and GAS endpoint contract are preserved.
-
-### Browser download utility extraction
-
-- `client/download-utils.js` owns Blob construction, object URL creation, anchor download triggering, and URL cleanup.
-- `index.html` dynamically initializes this utility alongside the weather runtime before normal startup.
-- CSV export still owns only its existing data/formatting responsibility and calls the utility for the browser download step.
-- Exported rows, CSV columns, BOM, line endings, filename pattern, MIME type, and user-facing completion message were not intentionally changed.
-
-### Browser download regression guard
-
-- `scripts/check-client-contract.mjs` verifies that `index.html` loads and initializes `client/download-utils.js` before bootstrap.
-- The client contract check verifies that CSV export delegates to `downloadBrowserBlob()` and rejects reintroduction of direct `new Blob(...)` handling into `index.html`.
-- `scripts/test-download-utils.mjs` directly verifies Blob content/MIME type, anchor creation, filename assignment, click triggering, and object URL cleanup.
-- `npm test` includes `npm run test:download`.
-
-### Log-view extraction guard and staged utility
-
-- `scripts/test-log-contract.mjs` freezes the current 20-item page size, day/week/month period boundaries, overdue/today/future labels, plan `undated / overdue / today / future` classification, visible-log page calculation, sort direction behavior, and search-state shape.
-- `client/log-date-utils.js` stages only the pure date-related part: `dateRange`, `dayDistance`, and `planTiming` plus their date-format helpers.
-- `scripts/test-log-date-utils.mjs` checks representative day/week/month boundaries, precedence rules, relative-day labels, and plan timing states.
-- `scripts/test-log-date-semantic-parity.mjs` compares the staged module against the current inline implementation across month/year boundaries and representative plan/date combinations.
-- `scripts/log-date-extraction-transform.mjs` defines a fail-closed exact-match transform for the eventual runtime switch. It refuses to continue when the current source differs or a target fragment is non-unique.
-- `scripts/test-log-date-extraction-dry-run.mjs` supports both staged and switched states and verifies that the switched source removes the three inline helpers, initializes `client/log-date-utils.js`, updates the client build marker to `20260809-03`, and remains parsable.
-- `scripts/apply-log-date-extraction.mjs` is the single apply entrypoint and `npm run maintenance:apply-log-date-extraction` exposes it.
-- `scripts/test-log-contract.mjs` supports both staged and switched states while continuing to enforce paging/search/sort contracts.
-- `docs/LOG_DATE_EXTRACTION_RUNBOOK.md` records required pre-check, apply, post-check, and rollback steps.
-- `npm run test:log` includes the contract, utility, semantic-parity, and dry-run checks.
-
-### Quick-input utility staging
-
-- `client/quick-input-utils.js` stages the pure identity/template part of quick input: `quickKey`, `quickTemplate`, and `isFavorite`.
-- Existing quick-key field order and trimming semantics are preserved.
-- Existing `qid` reuse, generated-ID fallback, default `その他` category, empty-string normalization, and favorite equality behavior are preserved.
-- `scripts/test-quick-input-utils.mjs` checks representative key/template/favorite behavior.
-- `scripts/test-quick-input-semantic-parity.mjs` compares the staged module against the current inline implementation across empty, watering, pesticide, and liquid-fertilizer examples.
-- The staged helpers were independently smoke-tested in Node and matched the expected current behavior.
-- `npm run test:quick` runs both quick-input tests, and unified `npm test` now includes it.
-- Runtime wiring is intentionally deferred; `index.html` is unchanged and Client Build remains `20260809-02`.
-
-## Verification coverage in repository
-
-The unified maintenance check is:
+Unified maintenance entrypoint remains:
 
 ```bash
 npm test
 ```
 
-It covers:
+It covers handoff consistency, Worker/API contracts, client/static contracts, browser download behavior, log date/filter migration guards, quick-input semantics, and weather helpers.
 
-- handoff document consistency;
-- Worker/API contract scenarios;
-- client syntax and protected client contracts, including external `client/*.js` syntax and extracted-responsibility wiring;
-- browser download utility behavior;
-- log period/paging/plan-timing migration guards, staged utility behavior, semantic parity, and extraction dry-run;
-- quick-input utility behavior and semantic parity;
-- weather utility/runtime/parity checks and extraction safeguards.
-
-A full repository `npm test` cannot currently be executed from the available connector-only environment because a local checkout cannot reach GitHub. A temporary GitHub Actions execution path was also attempted on an isolated branch, but workflow runs were not triggered through the current connection path; the temporary workflow was removed and was not merged. Therefore the log-date runtime switch is not claimed as verified or applied.
+A complete repository `npm test` still cannot be executed from the available connector-only environment. Runtime switches are therefore not claimed as applied or fully regression-verified.
 
 ## Protected contracts
 
-Current maintenance must continue to preserve unless explicitly changed:
-
-- same-origin `/api` and its current request/response behavior;
+- same-origin `/api` request/response behavior;
 - GAS backend role and external spreadsheet contract;
-- LocalStorage keys and saved client state compatibility;
+- LocalStorage keys and saved-state compatibility;
 - existing DOM IDs and primary UI behavior;
-- record/date formats and CSV export columns/format;
-- log period semantics, 20-item paging size, search-state shape, sort direction, and plan timing classification;
-- quick-input key/template/favorite semantics and LocalStorage compatibility;
+- record/date formats and CSV columns/format;
+- log period/search/filter/sort/paging semantics;
+- quick-input key/template/favorite semantics;
 - Cloudflare Pages deployment from `main`.
 
 ## Remaining maintenance
 
-- `index.html` still contains multiple unrelated client responsibilities and remains the main maintainability risk.
-- The log-date module is staged but is not yet wired into runtime; the current inline `dateRange`, `dayDistance`, and `planTiming` remain active.
-- The quick-input utility is staged but is not yet wired into runtime; current inline quick-input functions remain active.
-- Runtime switching must use guarded, exact-match changes with pre/post regression checks rather than manual broad replacement.
-- Further extraction should remain incremental; rendering, event binding, API mutation, LocalStorage mutation, and pure helper logic should not be moved as one large batch.
-- No broad rewrite, storage migration, backend replacement, route change, or template-shaped directory migration is justified by the current alignment work.
+- `index.html` remains the main maintainability risk because multiple rendering, event, storage, and orchestration responsibilities are still inline.
+- Staged pure modules are not yet wired into runtime.
+- Runtime wiring must remain guarded and separate from staging work until pre/post regression execution is available.
+- Continue with small pure responsibilities rather than broad client rewrites or backend/storage migration.
 
 ## Current scope decision
 
-- Handoff synchronization with current `main`: complete.
-- Weather helper extraction: complete.
-- Worker/GAS transport extraction: complete and present on `main`.
-- Browser download utility extraction: complete.
-- Browser download regression guard: complete.
-- Log-view extraction guard: complete.
-- Log-date pure utility staging and semantic parity: complete.
-- Guarded log-date runtime-switch command, dual-state tests, and runbook: complete and present on `main`.
-- Quick-input pure utility staging and semantic parity: complete.
-- Runtime switch to staged log-date/quick-input modules: not yet applied because neither a complete local checkout nor a triggerable repository execution path is available in the current environment.
-- Major Change Planning: not applicable to the current maintenance scope.
-- Recommended next batch: continue staging another small pure client responsibility or strengthen guarded runtime-switch coverage without changing production behavior until full pre/post regression execution is available.
+- Current batch: complete.
+- Production behavior change: none.
+- Client build bump: not required; remains `20260809-02`.
+- Overall maintenance: incomplete.
+- Recommended next batch: stage another small pure helper boundary or strengthen guarded switch coverage without changing production runtime.
