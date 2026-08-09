@@ -21,6 +21,7 @@ Cloudflare Pages 配信用のWebアプリです。
 - `scripts/test-worker-contract.mjs`：Worker通信契約の回帰テスト
 - `scripts/check-client-contract.mjs`：クライアント構文・主要契約・分離済み責務の静的チェック
 - `scripts/test-download-utils.mjs`：ブラウザダウンロードutilityの単体回帰テスト
+- `scripts/test-log-contract.mjs`：ログ期間・ページング・予定状態判定の回帰ガード
 - `package.json`：整備用チェックの統一実行入口
 - `ai-context.json` / `llms.txt`：AI向け引き継ぎ入口
 - `docs/`：現在構成、データ契約、UI制約、整備状況
@@ -41,6 +42,7 @@ npm test
 npm run test:worker
 npm run test:client
 npm run test:download
+npm run test:log
 npm run test:weather
 ```
 
@@ -49,5 +51,7 @@ Worker側は、静的配信、`OPTIONS /api`、POST制限、空body、GASへの�
 クライアント側は、`index.html` のインラインJavaScriptと `client/*.js` を構文確認対象にします。same-origin `/api`、既存LocalStorageキー、主要DOM ID、天気判定・bootstrap周辺の主要関数と既存閾値を横断的に確認し、分離済みmoduleが `index.html` から実際に読み込まれていることも確認します。
 
 ダウンロード責務については、Blob生成・object URL生成/解放・anchor downloadを `client/download-utils.js` に限定し、`index.html` へ再混在しないことを静的チェックします。専用テストではファイル名、MIME type、click、URL解放まで確認します。
+
+ログ周辺は次の責務分離へ進む前に、現在の期間境界、20件ページング、昇順/降順、検索state形状、予定の `undated / overdue / today / future` 判定を `scripts/test-log-contract.mjs` で固定します。
 
 クライアント分割は、DOM ID、state構造、LocalStorageキー、API payload、既存UI挙動を維持しながら、小さい責務単位で段階的に進めます。
