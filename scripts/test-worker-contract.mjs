@@ -75,7 +75,7 @@ try {
     });
   });
 
-  await run('valid GAS JSON is passed through with upstream status', async () => {
+  await run('valid GAS JSON is passed through with upstream status and timeout signal', async () => {
     let upstream;
     globalThis.fetch = async (url, init) => {
       upstream = { url, init };
@@ -95,6 +95,7 @@ try {
     assert.equal(upstream.init.method, 'POST');
     assert.equal(upstream.init.headers['Content-Type'], 'text/plain;charset=utf-8');
     assert.equal(upstream.init.body, body);
+    assert.equal(upstream.init.signal instanceof AbortSignal, true);
     assert.deepEqual(await json(response), {
       ok: true,
       data: { value: 1 }
@@ -113,6 +114,23 @@ try {
     assert.deepEqual(await json(response), {
       ok: false,
       error: 'GASからJSONが返りませんでした。GASの再デプロイと公開範囲を確認してください。'
+    });
+  });
+
+  await run('GAS timeout returns 504 with explicit retry guidance', async () => {
+    globalThis.fetch = async () => {
+      throw new DOMException('timed out', 'TimeoutError');
+    };
+
+    const response = await worker.fetch(
+      request('/api', { method: 'POST', body: '{}' }),
+      { ASSETS: { fetch: originalFetch } }
+    );
+
+    assert.equal(response.status, 504);
+    assert.deepEqual(await json(response), {
+      ok: false,
+      error: 'GASの応答がタイムアウトしました。時間をおいて再度お試しください。'
     });
   });
 
