@@ -29,10 +29,18 @@ Worker build marker: `2026-08-08-v22`
 
 ### Browser download utility extraction
 
-- `client/download-utils.js` now owns Blob construction, object URL creation, anchor download triggering, and URL cleanup.
+- `client/download-utils.js` owns Blob construction, object URL creation, anchor download triggering, and URL cleanup.
 - `index.html` dynamically initializes this utility alongside the weather runtime before normal startup.
 - CSV export still owns only its existing data/formatting responsibility and calls the utility for the browser download step.
 - Exported rows, CSV columns, BOM, line endings, filename pattern, MIME type, and user-facing completion message were not intentionally changed.
+
+### Browser download regression guard
+
+- `scripts/check-client-contract.mjs` now verifies that `index.html` loads and initializes `client/download-utils.js` before bootstrap.
+- The client contract check verifies that CSV export delegates to `downloadBrowserBlob()` and rejects reintroduction of direct `new Blob(...)` handling into `index.html`.
+- `scripts/test-download-utils.mjs` directly verifies Blob content/MIME type, anchor creation, filename assignment, click triggering, and object URL cleanup.
+- `npm test` now includes `npm run test:download`.
+- The new download utility test was reproduced against the current utility implementation in an isolated Node ESM environment and passed. A full repository `npm test` was not executable from the available connector-only repository environment in this batch.
 
 ## Verification coverage in repository
 
@@ -46,7 +54,8 @@ It covers:
 
 - handoff document consistency;
 - Worker/API contract scenarios;
-- client syntax and protected client contracts, including external `client/*.js` syntax;
+- client syntax and protected client contracts, including external `client/*.js` syntax and extracted-responsibility wiring;
+- browser download utility behavior;
 - weather utility/runtime/parity checks and extraction safeguards.
 
 The Worker contract suite covers static delegation, `OPTIONS /api`, non-POST rejection, empty POST rejection, GAS request forwarding, valid JSON pass-through, invalid upstream JSON, and upstream transport failure.
@@ -74,5 +83,6 @@ Current maintenance must continue to preserve unless explicitly changed:
 - Weather helper extraction: complete.
 - Worker/GAS transport extraction: complete and present on `main`.
 - Browser download utility extraction: complete.
+- Browser download regression guard: complete.
 - Major Change Planning: not applicable to the current maintenance scope.
 - Recommended next batch: continue incremental client responsibility extraction from `index.html`, choosing a self-contained area with existing contract coverage before changing behavior.
