@@ -10,7 +10,8 @@
     "test:download": "node scripts/test-download-utils.mjs",
     "test:log": "node scripts/test-log-contract.mjs && node scripts/test-log-date-utils.mjs && node scripts/test-log-date-semantic-parity.mjs && node scripts/test-log-date-extraction-dry-run.mjs",
     "test:weather": "node scripts/test-weather-utils.mjs && node scripts/test-weather-semantic-parity.mjs && node scripts/test-weather-runtime.mjs && node scripts/test-weather-extraction-dry-run.mjs && node scripts/test-weather-parity.mjs",
-    "maintenance:apply-weather-extraction": "node scripts/apply-weather-extraction.mjs"
+    "maintenance:apply-weather-extraction": "node scripts/apply-weather-extraction.mjs",
+    "maintenance:apply-log-date-extraction": "node scripts/apply-log-date-extraction.mjs"
   },
   "engines": {
     "node": ">=18"
