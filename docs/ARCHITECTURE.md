@@ -1,11 +1,11 @@
 # Architecture
 
-Client build marker: `20260808-01`
+Client build marker: `20260809-01`
 Worker build marker: `2026-08-08-v22`
 
 ## Current structure
 
-- `index.html` — single-page UI, styles, client state, rendering, form handling, log views, weather display, rotation display, bulk operations, and API request orchestration.
+- `index.html` — single-page UI, styles, client state, rendering, form handling, log views, weather display, rotation display, bulk operations, CSV export, and API request orchestration.
 - `client/weather-runtime.js` — runtime adapter that exposes the existing weather helper names while delegating calculations to `client/weather-utils.js` and reading live client state.
 - `client/weather-utils.js` — extracted weather naming, rain/wind risk, work-risk, plan-weather-kind, and safe-window decision helpers.
 - `_worker.js` — Cloudflare Pages Worker entrypoint. Serves static assets and owns same-origin `/api` routing, request validation, and API response formatting.
@@ -25,6 +25,7 @@ Worker build marker: `2026-08-08-v22`
 8. The GAS transport sends `text/plain;charset=utf-8` with redirects followed and parses the upstream response as JSON.
 9. `_worker.js` returns the parsed JSON with the existing upstream success/status behavior.
 10. Invalid GAS JSON and transport failures remain separate error paths and return the existing 502 JSON responses.
+11. CSV export remains browser-side and uses the local `downloadBrowserBlob()` helper to create and revoke the object URL without changing record selection or CSV formatting.
 
 ## Worker responsibility split
 
@@ -51,6 +52,7 @@ Business logic remains outside the Worker and transport module.
 - `worker/gas-transport.js` remains limited to upstream GAS transport/parsing and must not absorb browser/UI or application business rules.
 - Cloudflare Pages automatic deployment from `main` is the current publication method.
 - Existing `/api` path, accepted POST behavior, GAS request format, JSON response structure, and static asset delegation are compatibility boundaries.
+- Existing LocalStorage keys, DOM IDs, record shapes, and CSV columns/format are compatibility boundaries unless an explicit scoped change requires otherwise.
 
 ## Maintenance guidance
 
