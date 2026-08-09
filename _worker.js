@@ -1,6 +1,6 @@
-import { GasResponseError, fetchGas, parseGasJson } from './worker/gas-transport.js';
+import { GasResponseError, GasTimeoutError, fetchGas, parseGasJson } from './worker/gas-transport.js';
 
-const API_PATH = '/api'; // build: 2026-08-08-v22
+const API_PATH = '/api'; // build: 2026-08-09-v23
 const API_METHOD = 'POST';
 
 export default {
@@ -34,6 +34,10 @@ async function handleApiRequest_(request) {
     const data = await parseGasJson(gasResponse);
     return json_(data, gasResponse.ok ? 200 : gasResponse.status);
   } catch (error) {
+    if (error instanceof GasTimeoutError) {
+      return json_({ ok: false, error: error.message }, 504);
+    }
+
     if (error instanceof GasResponseError) {
       return json_({ ok: false, error: error.message }, 502);
     }
