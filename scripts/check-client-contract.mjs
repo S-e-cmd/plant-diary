@@ -132,4 +132,27 @@ if (runtimeWired) {
   );
 }
 
+required(
+  html,
+  /import\(['"]\.\/client\/download-utils\.js['"]\)/,
+  'download utility module is loaded by index.html'
+);
+required(
+  html,
+  /Promise\.all\(\[initializeWeatherRuntime\(\),initializeDownloadRuntime\(\)\]\)/,
+  'download utility is initialized before app bootstrap'
+);
+required(
+  combinedClientSource,
+  /export\s+function\s+downloadBrowserBlob\s*\(/,
+  'downloadBrowserBlob remains owned by the client utility module'
+);
+required(
+  html,
+  /downloadBrowserBlob\(csv,`植物栽培管理日誌_\$\{localDate\(new Date\(\)\)\}\.csv`,'text\/csv;charset=utf-8'\)/,
+  'CSV export still delegates browser download to downloadBrowserBlob'
+);
+assert.doesNotMatch(html, /new\s+Blob\s*\(/, 'index.html must not recreate browser Blob download responsibility');
+ok('index.html does not recreate browser Blob download responsibility');
+
 console.log(`checked ${inlineScripts.length} inline script block(s) and ${clientFiles.length} client file(s)`);
