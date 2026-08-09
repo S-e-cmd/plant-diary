@@ -11,9 +11,12 @@ import {
 } from './log-date-extraction-transform.mjs';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-const transformed = transformLogDateExtraction(html);
+const alreadySwitched = html.includes(newBuild) && html.includes("import('./client/log-date-utils.js')");
+const transformed = alreadySwitched ? html : transformLogDateExtraction(html);
 
-assert.notEqual(transformed, html, 'log date extraction dry-run must change the staged client');
+if (!alreadySwitched) {
+  assert.notEqual(transformed, html, 'log date extraction dry-run must change the staged client');
+}
 assert.ok(transformed.includes(newBuild), 'dry-run result must contain the new client build marker');
 assert.ok(!transformed.includes(oldDateRange), 'dry-run result must remove inline dateRange');
 assert.ok(!transformed.includes(oldDayDistance), 'dry-run result must remove inline dayDistance');
@@ -29,4 +32,4 @@ for (const [index, source] of inlineScripts.entries()) {
   new vm.Script(source, { filename: `log-date-dry-run-${index + 1}.js` });
 }
 
-console.log('log date extraction dry-run: ok');
+console.log(`log date extraction dry-run: ok (${alreadySwitched ? 'switched' : 'staged'})`);
