@@ -1,0 +1,36 @@
+name: Log date runtime switch
+
+on:
+  push:
+    branches:
+      - agent/log-date-runtime-switch
+    paths:
+      - .github/workflows/log-date-runtime-switch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  switch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/log-date-runtime-switch
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify staged state
+        run: npm test
+      - name: Apply fail-closed extraction
+        run: npm run maintenance:apply-log-date-extraction
+      - name: Verify switched state
+        run: npm test
+      - name: Commit switched client
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --exit-code && exit 1 || true
+          git commit -m "refactor: switch log date helpers to module"
+          git push origin HEAD:agent/log-date-runtime-switch
