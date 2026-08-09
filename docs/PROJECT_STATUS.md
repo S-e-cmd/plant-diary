@@ -1,7 +1,7 @@
 # Project Status
 
 Updated: 2026-08-09
-Client build marker: `20260809-01`
+Client build marker: `20260809-02`
 Worker build marker: `2026-08-08-v22`
 
 ## Current state
@@ -10,7 +10,7 @@ Worker build marker: `2026-08-08-v22`
 - `main` is the production branch and deploys automatically.
 - `_worker.js` is the same-origin `/api` boundary and delegates upstream GAS transport/parsing to `worker/gas-transport.js`.
 - Weather decision helpers are separated from `index.html` through `client/weather-runtime.js` and `client/weather-utils.js`.
-- Browser CSV download creation/revocation is isolated behind `downloadBrowserBlob()` while CSV selection, columns, filename pattern, and formatting remain unchanged.
+- Browser Blob download mechanics are separated into `client/download-utils.js`; CSV row selection, columns, filename pattern, and formatting remain unchanged.
 - AI handoff files are present and reference the parent starter instead of copying shared protocol rules into this repository.
 
 ## Completed alignment work
@@ -27,12 +27,14 @@ Worker build marker: `2026-08-08-v22`
 - `worker/gas-transport.js` owns GAS HTTP transport and upstream JSON parsing.
 - Existing `/api` route, POST/content-type/body behavior, response payload shape, cache headers, error messages, and GAS endpoint contract are preserved.
 
-### Browser download helper extraction
+### Browser download utility extraction
 
-- CSV export now calls a small browser Blob download helper instead of constructing/revoking the object URL inside the CSV click handler.
-- This is a responsibility cleanup only; exported rows and CSV data contract were not changed.
+- `client/download-utils.js` now owns Blob construction, object URL creation, anchor download triggering, and URL cleanup.
+- `index.html` dynamically initializes this utility alongside the weather runtime before normal startup.
+- CSV export still owns only its existing data/formatting responsibility and calls the utility for the browser download step.
+- Exported rows, CSV columns, BOM, line endings, filename pattern, MIME type, and user-facing completion message were not intentionally changed.
 
-## Verification recorded in repository
+## Verification coverage in repository
 
 The unified maintenance check is:
 
@@ -44,7 +46,7 @@ It covers:
 
 - handoff document consistency;
 - Worker/API contract scenarios;
-- client syntax and protected client contracts;
+- client syntax and protected client contracts, including external `client/*.js` syntax;
 - weather utility/runtime/parity checks and extraction safeguards.
 
 The Worker contract suite covers static delegation, `OPTIONS /api`, non-POST rejection, empty POST rejection, GAS request forwarding, valid JSON pass-through, invalid upstream JSON, and upstream transport failure.
@@ -57,7 +59,7 @@ Current maintenance must continue to preserve unless explicitly changed:
 - GAS backend role and external spreadsheet contract;
 - LocalStorage keys and saved client state compatibility;
 - existing DOM IDs and primary UI behavior;
-- record/date formats and CSV export columns;
+- record/date formats and CSV export columns/format;
 - Cloudflare Pages deployment from `main`.
 
 ## Remaining maintenance
@@ -71,6 +73,6 @@ Current maintenance must continue to preserve unless explicitly changed:
 - Handoff synchronization with current `main`: complete.
 - Weather helper extraction: complete.
 - Worker/GAS transport extraction: complete and present on `main`.
-- Browser download helper extraction: complete.
+- Browser download utility extraction: complete.
 - Major Change Planning: not applicable to the current maintenance scope.
 - Recommended next batch: continue incremental client responsibility extraction from `index.html`, choosing a self-contained area with existing contract coverage before changing behavior.
