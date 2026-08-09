@@ -1,72 +1,76 @@
 # Project Status
 
-Updated: 2026-08-08
-Client build marker: `20260808-01`
+Updated: 2026-08-09
+Client build marker: `20260809-01`
 Worker build marker: `2026-08-08-v22`
 
 ## Current state
 
 - Cloudflare Pages deployment with no framework build step.
 - `main` is the production branch and deploys automatically.
-- `_worker.js` remains the same-origin `/api` boundary and now delegates upstream GAS transport/parsing to `worker/gas-transport.js` on the maintenance branch.
-- Weather decision helpers are separated from `index.html`.
-- `index.html` dynamically loads `client/weather-runtime.js`, which delegates weather calculations to `client/weather-utils.js`.
-- The previous inline implementations of weather naming, rain/wind risk, work risk, plan weather kind, and `safeWindows()` have been removed from `index.html`.
+- `_worker.js` is the same-origin `/api` boundary and delegates upstream GAS transport/parsing to `worker/gas-transport.js`.
+- Weather decision helpers are separated from `index.html` through `client/weather-runtime.js` and `client/weather-utils.js`.
+- Browser CSV download creation/revocation is isolated behind `downloadBrowserBlob()` while CSV selection, columns, filename pattern, and formatting remain unchanged.
+- AI handoff files are present and reference the parent starter instead of copying shared protocol rules into this repository.
 
-## Weather extraction result
+## Completed alignment work
 
-The weather helper switch was executed on one checkout using the prepared exact-match migration.
+### Weather responsibility extraction
 
-Startup order after the switch is:
+- Weather naming, rain/wind risk, work-risk, plan-weather-kind, and safe-window helpers were moved out of the large inline client script.
+- `startApp()` initializes the weather runtime before saved state restoration and `bootstrap()`.
+- Existing weather thresholds, LocalStorage keys, DOM IDs, API payloads, and record formats were preserved.
 
-1. `startApp()` enables the initialization overlay.
-2. `initializeWeatherRuntime()` loads `client/weather-runtime.js`.
-3. The runtime adapter binds the existing helper names to `client/weather-utils.js` while reading live `state.weatherRules` and `state.forecastHourly`.
-4. Saved last-tab state is restored.
-5. Saved input draft state is restored.
-6. `bootstrap()` runs.
+### Worker/GAS transport extraction
 
-The existing API payloads, LocalStorage keys, DOM IDs, record formats, weather thresholds, and Worker/GAS contract were not changed by this extraction.
+- `_worker.js` retains route selection, request validation, status selection, JSON formatting, and static asset delegation.
+- `worker/gas-transport.js` owns GAS HTTP transport and upstream JSON parsing.
+- Existing `/api` route, POST/content-type/body behavior, response payload shape, cache headers, error messages, and GAS endpoint contract are preserved.
 
-## GAS transport extraction result
+### Browser download helper extraction
 
-The Worker-side GAS transport responsibility has been separated on `agent/split-gas-transport` without changing the public `/api` contract.
+- CSV export now calls a small browser Blob download helper instead of constructing/revoking the object URL inside the CSV click handler.
+- This is a responsibility cleanup only; exported rows and CSV data contract were not changed.
 
-- `_worker.js` retains route selection, method/body validation, response status selection, JSON response formatting, and static asset delegation.
-- `worker/gas-transport.js` owns the existing GAS endpoint request, `POST` transport, `text/plain;charset=utf-8`, redirect-follow behavior, upstream response text parsing, and invalid-JSON classification.
-- Existing GAS endpoint, request body forwarding, response payload shape, HTTP status behavior, error messages, and cache headers are preserved.
-- Worker build marker for this candidate change is `2026-08-08-v22`.
-- No GAS code, spreadsheet schema, Binding, Secret, deployment setting, or production data was changed.
+## Verification recorded in repository
 
-## Verification result
+The unified maintenance check is:
 
-Existing weather/client verification remains recorded from the completed weather extraction.
+```bash
+npm test
+```
 
-For the GAS transport extraction:
+It covers:
 
-- the modified Worker, extracted transport module, and revised Worker contract test were reproduced locally as ES modules;
-- all seven existing Worker contract scenarios passed after extraction;
-- non-API static delegation passed;
-- `OPTIONS /api` 204 behavior passed;
-- non-POST 405 behavior passed;
-- empty POST 400 behavior passed;
-- valid GAS JSON pass-through and upstream POST/content-type/body contract passed;
-- invalid GAS JSON existing 502 contract passed;
-- upstream fetch failure existing 502 contract passed.
+- handoff document consistency;
+- Worker/API contract scenarios;
+- client syntax and protected client contracts;
+- weather utility/runtime/parity checks and extraction safeguards.
 
-The repository test now imports `_worker.js` as a real file module so its relative `worker/gas-transport.js` import is exercised rather than evaluating `_worker.js` in isolation through a data URL.
+The Worker contract suite covers static delegation, `OPTIONS /api`, non-POST rejection, empty POST rejection, GAS request forwarding, valid JSON pass-through, invalid upstream JSON, and upstream transport failure.
 
-## Remaining verification
+## Protected contracts
 
-- The branch has not been merged into `main`, so production remains unchanged.
-- Production deployment/runtime verification is intentionally not claimed before merge.
-- No live GAS request was sent as part of this maintenance verification; the existing contract tests use controlled fetch stubs.
+Current maintenance must continue to preserve unless explicitly changed:
+
+- same-origin `/api` and its current request/response behavior;
+- GAS backend role and external spreadsheet contract;
+- LocalStorage keys and saved client state compatibility;
+- existing DOM IDs and primary UI behavior;
+- record/date formats and CSV export columns;
+- Cloudflare Pages deployment from `main`.
+
+## Remaining maintenance
+
+- `index.html` still contains multiple unrelated client responsibilities and remains the main maintainability risk.
+- Further extraction should stay incremental and target cohesive client responsibilities with confirmed dependency boundaries.
+- No broad rewrite, storage migration, backend replacement, route change, or template-shaped directory migration is justified by the current alignment work.
 
 ## Current scope decision
 
-- GAS transport responsibility extraction: complete on maintenance branch.
-- Existing `/api` contract: preserved by automated contract scenarios.
-- Client build: `20260808-01` unchanged.
-- Candidate Worker build: `2026-08-08-v22`.
-- Major Change Planning: not applicable.
-- Recommended action for this batch: review/merge the isolated branch before selecting another responsibility.
+- Handoff synchronization with current `main`: complete.
+- Weather helper extraction: complete.
+- Worker/GAS transport extraction: complete and present on `main`.
+- Browser download helper extraction: complete.
+- Major Change Planning: not applicable to the current maintenance scope.
+- Recommended next batch: continue incremental client responsibility extraction from `index.html`, choosing a self-contained area with existing contract coverage before changing behavior.
