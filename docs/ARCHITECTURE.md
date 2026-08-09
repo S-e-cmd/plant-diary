@@ -5,11 +5,12 @@ Worker build marker: `2026-08-08-v22`
 
 ## Current structure
 
-- `index.html` — single-page UI, styles, client state, rendering, form handling, log views, weather display, rotation display, bulk operations, CSV export, and API request orchestration.
+- `index.html` — single-page UI, styles, client state, rendering, form handling, log views, weather display, rotation display, bulk operations, CSV export, quick-input UI, and API request orchestration.
 - `client/weather-runtime.js` — runtime adapter that exposes the existing weather helper names while delegating calculations to `client/weather-utils.js` and reading live client state.
 - `client/weather-utils.js` — extracted weather naming, rain/wind risk, work-risk, plan-weather-kind, and safe-window decision helpers.
 - `client/download-utils.js` — browser Blob download creation, temporary object URL management, and cleanup for CSV export.
 - `client/log-date-utils.js` — staged pure log/plan date helpers for period boundaries, relative-day labels, and plan timing classification. It is not yet wired into `index.html`.
+- `client/quick-input-utils.js` — staged quick-input identity/template helpers: quick-key generation, quick-template normalization, and favorite matching. It is not yet wired into `index.html`.
 - `_worker.js` — Cloudflare Pages Worker entrypoint. Serves static assets and owns same-origin `/api` routing, request validation, and API response formatting.
 - `worker/gas-transport.js` — GAS endpoint transport and upstream JSON parsing. It preserves the existing POST/content-type/redirect and invalid-JSON behavior.
 - `.github/workflows/notify-app-checker.yml` — manually triggered App Checker notification workflow. It is not a deployment workflow.
@@ -29,6 +30,7 @@ Worker build marker: `2026-08-08-v22`
 10. Invalid GAS JSON and transport failures remain separate error paths and return the existing 502 JSON responses.
 11. CSV export remains browser-side and calls `downloadBrowserBlob()` from `client/download-utils.js`; record selection, CSV columns, filename pattern, and formatting are unchanged.
 12. Log/plan period calculation, relative-day labeling, and plan timing classification still execute from the current inline functions in `index.html`; `client/log-date-utils.js` is staged for a guarded switch only.
+13. Quick-input key generation, template normalization, and favorite matching still execute from the current inline functions in `index.html`; `client/quick-input-utils.js` is staged and semantic-parity tested only.
 
 ## Worker responsibility split
 
@@ -52,6 +54,7 @@ Business logic remains outside the Worker and transport module.
 - Weather decision helpers remain separated behind the current `weather-runtime.js` adapter unless a future explicit change requires otherwise.
 - Browser download mechanics remain isolated in `client/download-utils.js`; CSV data selection/formatting remains with the log/export responsibility until explicitly separated.
 - Log/plan date utility extraction must preserve current day/week/month boundaries, Monday-to-Sunday week handling, relative-day labels, and `undated / overdue / today / future` classification.
+- Quick-input utility extraction must preserve the existing quick-key field order/normalization, default `その他` category, existing `qid` reuse, generated-ID behavior, and favorite equality semantics.
 - GAS remains the existing data/API backend; its code and spreadsheet configuration are outside this repository.
 - `_worker.js` remains a thin public transport boundary and must not absorb application business logic without an explicit requirement.
 - `worker/gas-transport.js` remains limited to upstream GAS transport/parsing and must not absorb browser/UI or application business rules.
@@ -64,3 +67,5 @@ Business logic remains outside the Worker and transport module.
 `index.html` is currently large and responsibility-heavy. Because code maintenance is an explicit task, cohesive responsibilities may be extracted incrementally when their dependencies and DOM/API/storage contracts can be confirmed. Broad rewriting or template-shaped directory migration is still out of scope.
 
 For the staged log-date extraction, `scripts/log-date-extraction-transform.mjs` is the fail-closed exact-match switch. The transform must stop instead of guessing if the current inline source has drifted. `scripts/test-log-date-utils.mjs`, `scripts/test-log-date-semantic-parity.mjs`, and `scripts/test-log-date-extraction-dry-run.mjs` protect utility behavior and the future switch.
+
+For quick-input cleanup, `scripts/test-quick-input-utils.mjs` protects the staged helper behavior and `scripts/test-quick-input-semantic-parity.mjs` compares it with the current inline implementation. Runtime wiring should remain a separate guarded batch rather than mixing it with the utility staging step.
