@@ -1,14 +1,26 @@
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdwRh9gKVnNcRKQwvf22zuXBQLAM1pm4NuiXfPWIDdj884SWzlWIb4lGeu7XdSVPlcWQ/exec';
+export const GAS_TIMEOUT_MS = 25000;
 
 export class GasResponseError extends Error {}
+export class GasTimeoutError extends Error {}
 
-export function fetchGas(body) {
-  return fetch(GAS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body,
-    redirect: 'follow'
-  });
+export async function fetchGas(body) {
+  const signal = AbortSignal.timeout(GAS_TIMEOUT_MS);
+
+  try {
+    return await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body,
+      redirect: 'follow',
+      signal
+    });
+  } catch (error) {
+    if (signal.aborted || error?.name === 'TimeoutError') {
+      throw new GasTimeoutError('GASの応答がタイムアウトしました。時間をおいて再度お試しください。');
+    }
+    throw error;
+  }
 }
 
 export async function parseGasJson(response) {
