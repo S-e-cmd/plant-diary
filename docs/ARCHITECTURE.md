@@ -6,66 +6,39 @@ Worker build marker: `2026-08-08-v22`
 ## Current structure
 
 - `index.html` — single-page UI, styles, client state, rendering, form handling, log views, weather display, rotation display, bulk operations, CSV export, quick-input UI, and API request orchestration.
-- `client/weather-runtime.js` — runtime adapter that exposes the existing weather helper names while delegating calculations to `client/weather-utils.js` and reading live client state.
-- `client/weather-utils.js` — extracted weather naming, rain/wind risk, work-risk, plan-weather-kind, and safe-window decision helpers.
-- `client/download-utils.js` — browser Blob download creation, temporary object URL management, and cleanup for CSV export.
-- `client/log-date-utils.js` — staged pure log/plan date helpers for period boundaries, relative-day labels, and plan timing classification. It is not yet wired into `index.html`.
-- `client/quick-input-utils.js` — staged quick-input identity/template helpers: quick-key generation, quick-template normalization, and favorite matching. It is not yet wired into `index.html`.
-- `_worker.js` — Cloudflare Pages Worker entrypoint. Serves static assets and owns same-origin `/api` routing, request validation, and API response formatting.
-- `worker/gas-transport.js` — GAS endpoint transport and upstream JSON parsing. It preserves the existing POST/content-type/redirect and invalid-JSON behavior.
-- `.github/workflows/notify-app-checker.yml` — manually triggered App Checker notification workflow. It is not a deployment workflow.
-- `ai-context.json` / `llms.txt` / `docs/*` — local maintenance and handoff context for future development.
+- `client/weather-runtime.js` — runtime adapter for weather decisions.
+- `client/weather-utils.js` — extracted weather naming/risk/window helpers.
+- `client/download-utils.js` — browser Blob download mechanics.
+- `client/log-date-utils.js` — staged pure log/plan date helpers; not yet wired into runtime.
+- `client/log-filter-utils.js` — staged pure log search, period filtering, ordering, and pagination helpers; not yet wired into runtime.
+- `client/quick-input-utils.js` — staged quick-input key/template/favorite helpers; not yet wired into runtime.
+- `_worker.js` — Cloudflare Pages Worker entrypoint and same-origin `/api` boundary.
+- `worker/gas-transport.js` — GAS endpoint transport and upstream JSON parsing.
+- `.github/workflows/notify-app-checker.yml` — manually triggered App Checker notification workflow, not deployment.
+- `ai-context.json` / `llms.txt` / `docs/*` — local maintenance and handoff context.
 
 ## Runtime flow
 
-1. Cloudflare Pages serves `index.html` and other static repository assets.
-2. `startApp()` initializes both `client/weather-runtime.js` and `client/download-utils.js` before restoring saved tab/draft state and running `bootstrap()`.
-3. Browser-side operations call same-origin `/api`.
-4. `_worker.js` routes non-API requests directly to `env.ASSETS`.
-5. `/api` requests are validated and orchestrated by `_worker.js`.
-6. `OPTIONS` returns the existing 204 response; non-POST methods return the existing 405 JSON response.
-7. Valid POST bodies are passed to `worker/gas-transport.js`.
-8. The GAS transport sends `text/plain;charset=utf-8` with redirects followed and parses the upstream response as JSON.
-9. `_worker.js` returns the parsed JSON with the existing upstream success/status behavior.
-10. Invalid GAS JSON and transport failures remain separate error paths and return the existing 502 JSON responses.
-11. CSV export remains browser-side and calls `downloadBrowserBlob()` from `client/download-utils.js`; record selection, CSV columns, filename pattern, and formatting are unchanged.
-12. Log/plan period calculation, relative-day labeling, and plan timing classification still execute from the current inline functions in `index.html`; `client/log-date-utils.js` is staged for a guarded switch only.
-13. Quick-input key generation, template normalization, and favorite matching still execute from the current inline functions in `index.html`; `client/quick-input-utils.js` is staged and semantic-parity tested only.
-
-## Worker responsibility split
-
-`_worker.js` keeps the public Worker/API boundary:
-
-- `fetch` — route selection.
-- `handleApiRequest_` — `/api` method/body validation and response orchestration.
-- `json_` / `apiHeaders_` — response formatting.
-
-`worker/gas-transport.js` owns upstream GAS concerns:
-
-- `fetchGas` — GAS HTTP transport.
-- `parseGasJson` — upstream response parsing.
-- `GasResponseError` — invalid upstream JSON classification.
-
-Business logic remains outside the Worker and transport module.
+1. Cloudflare Pages serves `index.html` and static assets.
+2. `startApp()` initializes `client/weather-runtime.js` and `client/download-utils.js` before saved state restoration and `bootstrap()`.
+3. Browser operations call same-origin `/api`.
+4. `_worker.js` delegates non-API requests to `env.ASSETS` and validated API transport to `worker/gas-transport.js`.
+5. CSV browser download uses `client/download-utils.js`.
+6. Log date, log filter/page, and quick-input pure helpers still run from current inline functions in `index.html`; staged modules are not production runtime dependencies yet.
 
 ## Responsibility boundaries to preserve
 
-- Browser UI and interaction logic remain client-side.
-- Weather decision helpers remain separated behind the current `weather-runtime.js` adapter unless a future explicit change requires otherwise.
-- Browser download mechanics remain isolated in `client/download-utils.js`; CSV data selection/formatting remains with the log/export responsibility until explicitly separated.
-- Log/plan date utility extraction must preserve current day/week/month boundaries, Monday-to-Sunday week handling, relative-day labels, and `undated / overdue / today / future` classification.
-- Quick-input utility extraction must preserve the existing quick-key field order/normalization, default `その他` category, existing `qid` reuse, generated-ID behavior, and favorite equality semantics.
-- GAS remains the existing data/API backend; its code and spreadsheet configuration are outside this repository.
-- `_worker.js` remains a thin public transport boundary and must not absorb application business logic without an explicit requirement.
-- `worker/gas-transport.js` remains limited to upstream GAS transport/parsing and must not absorb browser/UI or application business rules.
-- Cloudflare Pages automatic deployment from `main` is the current publication method.
-- Existing `/api` path, accepted POST behavior, GAS request format, JSON response structure, and static asset delegation are compatibility boundaries.
-- Existing LocalStorage keys, DOM IDs, record shapes, and CSV columns/format are compatibility boundaries unless an explicit scoped change requires otherwise.
+- Browser UI and event handling remain client-side.
+- Weather helper extraction preserves existing thresholds and decisions.
+- Browser download mechanics remain isolated from CSV row/column selection.
+- Log-date extraction preserves day/week/month boundaries, Monday-to-Sunday week handling, relative-day labels, and plan timing classification.
+- Log-filter extraction preserves searchable fields, date fallback (`date` then `startDate`), spray/liquid special filters, sort key/direction, date-range behavior requiring `date`, and 20-item paging semantics.
+- Quick-input extraction preserves key field order/trimming, default `その他`, `qid` reuse/generated-ID behavior, and favorite equality semantics.
+- GAS remains the existing backend; `_worker.js` remains a thin public transport boundary.
+- Existing `/api`, LocalStorage keys, DOM IDs, record shapes, CSV format, and Cloudflare Pages `main` deployment remain compatibility boundaries.
 
 ## Maintenance guidance
 
-`index.html` is currently large and responsibility-heavy. Because code maintenance is an explicit task, cohesive responsibilities may be extracted incrementally when their dependencies and DOM/API/storage contracts can be confirmed. Broad rewriting or template-shaped directory migration is still out of scope.
+`index.html` remains responsibility-heavy. Continue extracting cohesive pure logic in small batches and keep runtime wiring separate from utility staging when full pre/post regression execution is unavailable.
 
-For the staged log-date extraction, `scripts/log-date-extraction-transform.mjs` is the fail-closed exact-match switch. The transform must stop instead of guessing if the current inline source has drifted. `scripts/test-log-date-utils.mjs`, `scripts/test-log-date-semantic-parity.mjs`, and `scripts/test-log-date-extraction-dry-run.mjs` protect utility behavior and the future switch.
-
-For quick-input cleanup, `scripts/test-quick-input-utils.mjs` protects the staged helper behavior and `scripts/test-quick-input-semantic-parity.mjs` compares it with the current inline implementation. Runtime wiring should remain a separate guarded batch rather than mixing it with the utility staging step.
+The staged log-date switch uses `scripts/log-date-extraction-transform.mjs` as an exact-match fail-closed transform. Quick-input and log-filter modules currently have unit/semantic-parity tests only and must not be manually wired by broad replacement.
