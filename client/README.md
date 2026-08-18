@@ -10,11 +10,11 @@
 - `quick-input-utils.js` / `quick-input-runtime.js` — クイック入力の同一性、テンプレート生成、お気に入り判定、最近使った内容、追加・解除。LocalStorage保存とDOM描画はUI責務として `index.html` に残す。
 - `rotation-utils.js` / `rotation-runtime.js` — ローテーション予定判定、未完了枠、実施履歴、current / next / after表示モデル、次周要否。画面HTML生成とGAS mutationは別責務のまま。
 - `plan-bulk-utils.js` — 一括操作対象IDの正規化、`YYYY-MM-DD` 実在日付検証、完了・延期・見送りのAPI payload生成。
-- `startup-loader.js` — Workerがアプリinline scriptより前へ挿入する起動専用loader。初回は `bootstrapCore`、同日スナップショットがある場合は即時表示、完全 `bootstrap` は裏で更新する。
+- `startup-loader.js` — Workerがアプリinline scriptより前へ同じHTMLレスポンス内に埋め込む起動専用loader。Today / Input / Plansの初回だけ `bootstrapCore` または同日スナップショットを利用し、完全 `bootstrap` は裏で更新する。Logsと手動Syncはfull bootstrapを使う。
 
 ## Startup ownership
 
-起動時fetchの差し替えは `startup-loader.js` だけが担当します。旧 `startup-runtime.js` / `startup-snapshot.js` は二重fetchラップになるため削除しました。`weather-runtime.js` は天気判断だけを担当し、起動制御を持ちません。
+起動時fetchの差し替えは `startup-loader.js` だけが担当します。高速化対象はページセッション最初のbootstrapだけで、2回目以降のbootstrapは通常のfull取得へ戻します。旧 `startup-runtime.js` / `startup-snapshot.js` は二重fetchラップになるため削除済みです。`weather-runtime.js` は天気判断だけを担当し、起動制御を持ちません。
 
 ## Runtime contracts
 
@@ -22,7 +22,7 @@
 - Quick input: `scripts/test-quick-input-utils.mjs` / `scripts/test-quick-input-runtime.mjs`
 - Rotation: `scripts/test-rotation-utils.mjs` / `scripts/test-rotation-runtime.mjs`
 - Bulk plan: `scripts/test-plan-bulk-utils.mjs`
-- Startup: `scripts/test-startup-loader.mjs`
+- Startup: `scripts/test-startup-loader.mjs` / `scripts/test-worker-contract.mjs`
 
 さらに `scripts/check-client-contract.mjs` が `index.html` のactive runtime配線を固定し、旧inline処理の再混入を検出します。
 
