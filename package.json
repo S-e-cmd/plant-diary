@@ -9,7 +9,7 @@
     "test:api": "node scripts/test-api-contract.mjs",
     "test:client": "node scripts/check-client-contract.mjs",
     "test:download": "node scripts/test-download-utils.mjs",
-    "test:log": "node scripts/test-log-contract.mjs && node scripts/test-log-runtime.mjs",
+    "test:log": "node scripts/test-log-contract.mjs && node scripts/test-log-runtime.mjs && node scripts/test-log-tools-ui.mjs",
     "test:quick": "node scripts/test-quick-input-utils.mjs && node scripts/test-quick-input-runtime.mjs",
     "test:rotation": "node scripts/test-rotation-utils.mjs && node scripts/test-rotation-runtime.mjs",
     "test:plan-bulk": "node scripts/test-plan-bulk-utils.mjs",
