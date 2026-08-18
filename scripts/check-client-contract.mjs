@@ -63,6 +63,7 @@ const combinedClientSource = executableSources.map(item => item.source).join('\n
 const contractSource = `${html}\n${combinedClientSource}`;
 
 required(contractSource, /const\s+API_URL\s*=\s*['"]\/api['"]\s*;/, 'same-origin /api contract is present');
+required(html, /["']&quot;["']/, 'HTML quote escaping retains the complete &quot; entity');
 
 for (const key of [
   'plantDiaryCollapsed',
@@ -130,6 +131,16 @@ required(
 );
 required(combinedClientSource, /action:'bootstrap'/, 'bootstrap API action remains present');
 required(combinedClientSource, /applyBootstrap\(d\)/, 'bootstrap response application remains present');
+required(
+  html,
+  /if\(action==='postpone'\)\{date=prompt\('延期後の日付（YYYY-MM-DD）'\);if\(!date\)return\}/,
+  'bulk postpone collects a target date before mutation'
+);
+required(
+  html,
+  /const payload=\{action:'bulkPlans',ids:\[\.\.\.state\.selectedPlans\],operation:action\};if\(date\)payload\.date=date;/,
+  'bulk postpone forwards the entered date in the existing bulkPlans payload'
+);
 
 const runtimeWired = html.includes("import('./client/weather-runtime.js')");
 if (runtimeWired) {
