@@ -101,6 +101,10 @@
     }).catch(() => {});
   }
 
+  function scheduleFullRefresh(input, init, today) {
+    setTimeout(() => refreshFull(input, init, today), 0);
+  }
+
   globalThis.fetch = async function startupFetch(input, init) {
     if (!isBootstrapRequest(input, init)) return originalFetch(input, init);
     if (startupHandled) return originalFetch(input, init);
@@ -117,7 +121,7 @@
 
     const snapshot = readSnapshot(today);
     if (snapshot) {
-      refreshFull(input, init, today);
+      scheduleFullRefresh(input, init, today);
       return new Response(JSON.stringify({ ok: true, data: snapshot }), {
         status: 200,
         headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
@@ -130,7 +134,7 @@
       ensureStartupForecast(body.data, today);
       writeSnapshot(body.data, today);
     }
-    refreshFull(input, init, today);
+    scheduleFullRefresh(input, init, today);
     return body ? jsonResponse(body, response) : response;
   };
 })();
