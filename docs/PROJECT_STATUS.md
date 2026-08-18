@@ -2,21 +2,23 @@
 
 Updated: 2026-08-19
 Client build marker: `20260819-01`
-Worker build marker: `2026-08-19-v29`
+Worker build marker: `2026-08-19-v30`
 
 ## Current state
 
 - Cloudflare Pages deployment with `main` as the production branch.
 - Application presentation CSS has been extracted from `index.html` into active `styles.css` and is loaded directly by the page.
 - Weather decision helpers and browser-download mechanics are active external client modules.
-- Startup no longer has to block on the full GAS bootstrap on repeated same-day launches: `client/startup-runtime.js` and `client/startup-snapshot.js` return a same-day startup snapshot immediately for the Today / Input / Plans tabs, then fetch the full current bootstrap in the background and re-apply it automatically when it arrives.
-- Startup snapshots contain recent actuals, required same-day / rotation history, active plans, pinned state, weather/forecast data, masters, app settings, and interval rules. Trash and summaries are intentionally not persisted in the startup snapshot.
-- Log extraction now has a complete runtime boundary: `client/log-date-utils.js` and `client/log-list-utils.js` own pure processing; `client/log-runtime.js` binds those operations to application state without owning DOM rendering.
-- Quick-input extraction now has a complete runtime boundary: `client/quick-input-utils.js` owns pure identity/template/candidate logic; `client/quick-input-runtime.js` binds favorites and recent records to application state without owning LocalStorage or DOM rendering.
-- Rotation extraction now has a complete runtime boundary: `client/rotation-utils.js` owns rotation selection/view-model/next-cycle detection; `client/rotation-runtime.js` binds those operations to application state without owning API mutation or GAS business rules.
+- Startup acceleration is now active in the delivered HTML path. `_worker.js` injects the synchronous `client/startup-loader.js` immediately before the application's existing inline script without rewriting `index.html` itself.
+- On the first launch without a same-day snapshot, the startup loader sends `bootstrapCore` first, returns that lightweight response to the existing page bootstrap, and starts the full `bootstrap` request in the background. When full data arrives it refreshes the same-day snapshot and applies the full bootstrap to the open page.
+- On repeated same-day launches of Today / Input / Plans, the startup loader returns the saved startup snapshot immediately and refreshes the full bootstrap in the background. Logs deliberately does not use the partial startup snapshot.
+- Startup snapshots retain recent actuals plus same-day and rotation history, active plans, pinned state, available weather/forecast data, masters, app settings, and interval rules. Trash and summaries are intentionally omitted from the snapshot.
+- The current GAS deployment supports both `bootstrapCore` and full `bootstrap`; Worker transport points to the GAS Web App URL supplied on 2026-08-19 after the two-stage startup deployment.
+- Log extraction has a complete runtime boundary: `client/log-date-utils.js` and `client/log-list-utils.js` own pure processing; `client/log-runtime.js` binds those operations to application state without owning DOM rendering.
+- Quick-input extraction has a complete runtime boundary: `client/quick-input-utils.js` owns pure identity/template/candidate logic; `client/quick-input-runtime.js` binds favorites and recent records to application state without owning LocalStorage or DOM rendering.
+- Rotation extraction has a complete runtime boundary: `client/rotation-utils.js` owns rotation selection/view-model/next-cycle detection; `client/rotation-runtime.js` binds those operations to application state without owning API mutation or GAS business rules.
 - Bulk-plan request extraction is contract-backed: `client/plan-bulk-utils.js` contains selected-ID normalization, real `YYYY-MM-DD` validation, and complete/postpone/cancel payload construction.
 - Worker/GAS transport responsibilities are split and active in production code.
-- GAS transport points to the optimized deployed GAS Web App URL supplied on 2026-08-19 after the startup-read reduction pass.
 - Worker API normalization is active: browser `parse / calendar / calendarBulk / bulkPlans` are converted to GAS `analyze / syncPlanCalendar / syncAllPlansCalendar / batchPlans` with the required payload field aliases.
 - `skipRotation` passes through unchanged so GAS retains rotation business-logic ownership.
 - Bulk postpone is active in browser runtime: the user is prompted for a target date before mutation; cancelling the prompt performs no request.
@@ -30,7 +32,8 @@ Worker build marker: `2026-08-19-v29`
 
 - `scripts/check-client-contract.mjs` requires the external stylesheet link, rejects recreation of the application stylesheet as an inline `<style>` block, checks representative selectors, guards the complete `&quot;` HTML-escaping entity, and fixes the bulk-postpone prompt/date-payload runtime contract.
 - `scripts/test-startup-snapshot.mjs` verifies same-day snapshot validity, recent-actual retention, rotation-history retention, active-plan filtering, and storage round-trips.
-- `scripts/test-startup-runtime.mjs` verifies cached bootstrap is returned immediately while one real bootstrap request runs in the background, refreshes the snapshot, and re-applies fresh data to the active page.
+- `scripts/test-startup-runtime.mjs` verifies the module form of cached bootstrap refresh behavior.
+- `scripts/test-startup-loader.mjs` verifies the delivered startup loader requests `bootstrapCore` first when there is no snapshot, then starts a full `bootstrap` in the background and writes a startup snapshot.
 - `scripts/test-log-contract.mjs` covers daily/weekly/monthly boundaries, overdue/today/future classification, text and field filtering, special spray/liquid filters, period filtering, ascending/descending ordering, and 20-item pagination behavior.
 - `scripts/test-log-runtime.mjs` verifies state-bound date/timing access and the combined search/period/sort/pagination log list result.
 - `scripts/test-quick-input-utils.mjs` covers field identity order, template defaults, favorite matching, duplicate suppression, newest-first ordering, and result limits.
@@ -58,14 +61,16 @@ Worker build marker: `2026-08-19-v29`
 - bulk postpone requires a caller-supplied real `YYYY-MM-DD` date; no layer may invent a date;
 - runtime boundary modules may consume application state but must not own unrelated UI rendering, LocalStorage, or GAS spreadsheet mutation;
 - startup snapshots are same-day only and may not be used for the Logs tab because partial cached history must not be presented as a complete log result;
+- startup loader injection must occur before the existing inline application script and must not modify the persisted `index.html` source;
 - active application stylesheet boundary at `styles.css`;
 - Cloudflare Pages deployment from `main`.
 
 ## Current maintenance decision
 
 - Startup performance is the current priority.
-- Repeated same-day startup is now non-blocking for Today / Input / Plans through local startup snapshots with background refresh.
-- First launch of the day still depends on the full GAS bootstrap until the prepared two-stage GAS `bootstrapCore` deployment is published; that is the remaining startup bottleneck.
+- First launch now uses two-stage startup: lightweight `bootstrapCore` first, full bootstrap in the background.
+- Repeated same-day startup for Today / Input / Plans uses a local startup snapshot immediately and full bootstrap in the background.
+- Logs remains full-data only and deliberately bypasses the partial startup snapshot.
 - CSS responsibility extraction: complete and active in runtime source.
 - Log runtime boundary: implemented and regression-tested; `index.html` delegation remains pending.
 - Quick-input runtime boundary: implemented and regression-tested; `index.html` delegation remains pending.
@@ -74,5 +79,5 @@ Worker build marker: `2026-08-19-v29`
 - A cyclic rotation is explicitly contract-tested to require a next cycle after all cyclic frames become completed/cancelled; GAS is responsible for actually creating the next-cycle rows.
 - Browser/GAS action-name drift for `parse / calendar / calendarBulk / bulkPlans` is resolved at the Worker boundary and documented in `docs/API_CONTRACT.md`.
 - `skipRotation` is not equivalent to ordinary cancellation and passes through unchanged to GAS.
-- Client page marker remains `20260819-01`; startup behavior changed through an already-loaded client runtime module without another whole-file `index.html` rewrite.
-- Worker build is `2026-08-19-v29` for the optimized GAS deployment.
+- Client page marker remains `20260819-01`; startup behavior is activated through Worker HTML injection rather than another whole-file `index.html` replacement.
+- Worker build is `2026-08-19-v30`.
