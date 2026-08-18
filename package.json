@@ -3,12 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "npm run test:handoff && npm run test:worker && npm run test:client && npm run test:download && npm run test:log && npm run test:weather",
+    "test": "npm run test:handoff && npm run test:worker && npm run test:client && npm run test:download && npm run test:log && npm run test:quick && npm run test:weather",
     "test:handoff": "node scripts/check-handoff-contract.mjs",
     "test:worker": "node scripts/test-worker-contract.mjs",
     "test:client": "node scripts/check-client-contract.mjs",
     "test:download": "node scripts/test-download-utils.mjs",
     "test:log": "node scripts/test-log-contract.mjs",
+    "test:quick": "node scripts/test-quick-input-utils.mjs",
     "test:weather": "node scripts/test-weather-utils.mjs && node scripts/test-weather-semantic-parity.mjs && node scripts/test-weather-runtime.mjs && node scripts/test-weather-extraction-dry-run.mjs && node scripts/test-weather-parity.mjs",
     "maintenance:apply-weather-extraction": "node scripts/apply-weather-extraction.mjs"
   },
