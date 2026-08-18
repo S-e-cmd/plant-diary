@@ -21,6 +21,10 @@ function parseBootstrapRequest(input, init) {
   }
 }
 
+function withAction(init, action) {
+  return { ...init, body: JSON.stringify({ action }) };
+}
+
 async function refreshSnapshot(originalFetch, input, init, today) {
   const response = await originalFetch(input, init);
   try {
@@ -37,6 +41,10 @@ async function refreshSnapshot(originalFetch, input, init, today) {
   return response;
 }
 
+async function fetchCoreBootstrap(originalFetch, input, init) {
+  return originalFetch(input, withAction(init, 'bootstrapCore'));
+}
+
 export function installStartupRuntime() {
   if (installed || typeof globalThis.fetch !== 'function' || !globalThis.localStorage) return false;
   installed = true;
@@ -51,15 +59,26 @@ export function installStartupRuntime() {
       ? readStartupSnapshot(globalThis.localStorage, today)
       : null;
 
-    if (!snapshot) {
-      return refreshSnapshot(originalFetch, input, init, today);
+    if (snapshot) {
+      void refreshSnapshot(originalFetch, input, init, today).catch(() => {});
+      return new Response(JSON.stringify({ ok: true, data: snapshot }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
+      });
+    }
+
+    const coreResponse = await fetchCoreBootstrap(originalFetch, input, init);
+    try {
+      const body = await coreResponse.clone().json();
+      if (coreResponse.ok && body?.ok && body.data) {
+        writeStartupSnapshot(globalThis.localStorage, body.data, today);
+      }
+    } catch {
+      // Return the core response unchanged even when it cannot be cached.
     }
 
     void refreshSnapshot(originalFetch, input, init, today).catch(() => {});
-    return new Response(JSON.stringify({ ok: true, data: snapshot }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
-    });
+    return coreResponse;
   };
 
   return true;
