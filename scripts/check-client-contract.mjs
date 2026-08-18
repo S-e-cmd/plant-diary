@@ -98,19 +98,14 @@ for (const id of [
 }
 
 for (const name of [
-  'forecastWeatherName',
-  'weatherRule',
-  'forecastRain',
-  'forecastStrongWind',
-  'weatherWorkRisk',
-  'riskReason',
-  'isWeatherSensitivePlan',
-  'planWeatherKind',
-  'safeWindows',
   'renderForecasts',
   'renderWorkWindows',
   'applyBootstrap',
-  'renderActiveTab'
+  'renderActiveTab',
+  'renderQuickInputs',
+  'renderLogs',
+  'renderPlans',
+  'rotationCard'
 ]) {
   required(
     combinedClientSource,
@@ -138,35 +133,58 @@ required(
 );
 required(
   html,
-  /const payload=\{action:'bulkPlans',ids:\[\.\.\.state\.selectedPlans\],operation:action\};if\(date\)payload\.date=date;/,
-  'bulk postpone forwards the entered date in the existing bulkPlans payload'
+  /buildBulkPlanRequest\(action,\[\.\.\.state\.selectedPlans\],date\)/,
+  'bulk plan payload delegates to plan-bulk-utils'
 );
 
-const runtimeWired = html.includes("import('./client/weather-runtime.js')");
-if (runtimeWired) {
-  required(html, /import\(['"]\.\/client\/weather-runtime\.js['"]\)/, 'weather runtime module is loaded by index.html');
-  required(combinedClientSource, /from ['"]\.\/weather-utils\.js['"]/, 'weather runtime imports weather-utils.js');
-  required(
-    html,
-    /if\(savedDraft\)\{\$\$\('\[data-input-type\]'\)\.forEach\(/,
-    'saved draft restoration still updates all input-type controls'
-  );
+for (const modulePath of [
+  './client/weather-runtime.js',
+  './client/download-utils.js',
+  './client/log-runtime.js',
+  './client/quick-input-runtime.js',
+  './client/rotation-runtime.js',
+  './client/plan-bulk-utils.js'
+]) {
+  required(html, new RegExp(`import\\(['"]${modulePath.replaceAll('.', '\\.') }['"]\\)`), `${modulePath} is loaded by index.html`);
 }
 
 required(
   html,
-  /import\(['"]\.\/client\/download-utils\.js['"]\)/,
-  'download utility module is loaded by index.html'
+  /Promise\.all\(\[initializeWeatherRuntime\(\),initializeDownloadRuntime\(\),initializeClientRuntimes\(\)\]\)/,
+  'all active client runtimes initialize before app bootstrap'
 );
+required(combinedClientSource, /from ['"]\.\/weather-utils\.js['"]/, 'weather runtime imports weather-utils.js');
+required(combinedClientSource, /export\s+function\s+downloadBrowserBlob\s*\(/, 'downloadBrowserBlob remains owned by the client utility module');
+required(html, /quickInputRuntime\.buildGroups\(\)/, 'quick-input UI delegates candidate grouping to quick-input runtime');
+required(html, /quickInputRuntime\.toggleFavorite\(x\)/, 'quick-input UI delegates favorite mutation to quick-input runtime');
+required(html, /rotationRuntime\.viewModel\(\)/, 'rotation card delegates selection and history model to rotation runtime');
+required(html, /logRuntime\.buildLogList\(state\.actuals,state\.plans\)/, 'log UI delegates filtering sorting and pagination to log runtime');
+required(html, /return logRuntime\.dayDistance\(x\)/, 'log card delegates distance calculation to log runtime');
+required(html, /return logRuntime\.planTiming\(x\)/, 'plan filtering delegates timing classification to log runtime');
+
+assert.doesNotMatch(
+  html,
+  /const fav=state\.quickFavorites\.filter\(x=>x\.action\),seen=new Set\(fav\.map\(quickKey\)\)/,
+  'index.html must not recreate quick-input grouping logic inline'
+);
+ok('index.html does not recreate quick-input grouping logic inline');
+assert.doesNotMatch(
+  html,
+  /const r=dateRange\(\),s=state\.search,active=!!\(s\.q\|\|s\.start/,
+  'index.html must not recreate log filtering and pagination inline'
+);
+ok('index.html does not recreate log filtering and pagination inline');
+assert.doesNotMatch(
+  html,
+  /const items=activeRotationPlans\(\);if\(!items\.length\)return''/,
+  'index.html must not recreate rotation current-next-after selection inline'
+);
+ok('index.html does not recreate rotation selection logic inline');
+
 required(
   html,
-  /Promise\.all\(\[initializeWeatherRuntime\(\),initializeDownloadRuntime\(\)\]\)/,
-  'download utility is initialized before app bootstrap'
-);
-required(
-  combinedClientSource,
-  /export\s+function\s+downloadBrowserBlob\s*\(/,
-  'downloadBrowserBlob remains owned by the client utility module'
+  /if\(savedDraft\)\{\$\$\('\[data-input-type\]'\)\.forEach\(/,
+  'saved draft restoration still updates all input-type controls'
 );
 required(
   html,
