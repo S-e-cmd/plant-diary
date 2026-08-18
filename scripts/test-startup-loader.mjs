@@ -18,18 +18,19 @@ function createUpstream(calls) {
   return async (input, init = {}) => {
     const action = JSON.parse(init.body || '{}').action || '';
     calls.push(action);
+    const today = new Date().toISOString().slice(0, 10);
     const data = action === 'bootstrapCore'
       ? { actuals: [], plans: [], pinned: {}, masters: {}, appSettings: {}, intervalRules: [], bootstrapComplete: false }
       : {
-          actuals: [{ id: 'a1', date: new Date().toISOString().slice(0, 10) }],
+          actuals: [{ id: 'a1', date: today }],
           plans: [],
           pinned: {},
           masters: {},
           appSettings: {},
           intervalRules: [],
           weather: { maxTemp: 34 },
-          forecasts: [{ date: new Date().toISOString().slice(0, 10), code: 1 }],
-          forecastHourly: [{ datetime: `${new Date().toISOString().slice(0, 10)}T09:00:00+09:00` }]
+          forecasts: [{ date: today, code: 1 }],
+          forecastHourly: [{ datetime: `${today}T09:00:00+09:00` }]
         };
     return new Response(JSON.stringify({ ok: true, data }), {
       status: 200,
@@ -60,6 +61,8 @@ try {
     });
     const firstBody = await first.json();
     assert.equal(firstBody.data.bootstrapComplete, false);
+    assert.equal(firstBody.data.forecasts.length, 1);
+    assert.equal(firstBody.data.forecasts[0].source, 'startup-core');
     assert.equal(calls[0], 'bootstrapCore');
     await new Promise(resolve => setTimeout(resolve, 0));
     assert.deepEqual(calls.slice(0, 2), ['bootstrapCore', 'bootstrap']);
@@ -73,6 +76,34 @@ try {
       body: JSON.stringify({ action: 'bootstrap' })
     });
     assert.deepEqual(calls, ['bootstrapCore', 'bootstrap', 'bootstrap']);
+  }
+
+  {
+    const calls = [];
+    const today = new Date().toISOString().slice(0, 10);
+    const legacySnapshot = {
+      version: 1,
+      today,
+      data: { actuals: [], plans: [], forecasts: [], forecastHourly: [] }
+    };
+    globalThis.localStorage = createStorage([
+      ['plantDiaryLastTab', 'today'],
+      ['plantDiaryStartupSnapshot', JSON.stringify(legacySnapshot)]
+    ]);
+    globalThis.fetch = createUpstream(calls);
+    globalThis.applyBootstrap = () => {};
+    globalThis.applyBackgroundForecasts = () => {};
+    await loadLoader('legacy-snapshot');
+
+    const response = await globalThis.fetch('/api', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'bootstrap' })
+    });
+    const body = await response.json();
+    assert.equal(body.data.forecasts.length, 1);
+    assert.equal(body.data.forecasts[0].source, 'startup-core');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.deepEqual(calls, ['bootstrap']);
   }
 
   {
@@ -93,7 +124,7 @@ try {
     assert.ok(globalThis.localStorage.getItem('plantDiaryStartupSnapshot'));
   }
 
-  console.log('ok - startup loader accelerates only supported initial bootstrap and refreshes forecast state with full data');
+  console.log('ok - startup loader avoids forecast blocking and refreshes full forecast state in background');
 } finally {
   globalThis.fetch = originalFetch;
   if (originalLocalStorage === undefined) delete globalThis.localStorage;
