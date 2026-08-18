@@ -1,25 +1,27 @@
 # Project Status
 
 Updated: 2026-08-18
-Client build marker: `20260809-02`
+Client build marker: `20260818-01`
 Worker build marker: `2026-08-09-v23`
 
 ## Current state
 
 - Cloudflare Pages deployment with `main` as the production branch.
+- Application presentation CSS has been extracted from `index.html` into active `styles.css` and is loaded directly by the page.
 - Weather decision helpers and browser-download mechanics are active external client modules.
 - Worker/GAS transport responsibilities are split and active in production code.
 - GAS transport has a 25-second timeout; timeout responses use HTTP 504 with an explicit retry message.
 - Invalid GAS JSON and ordinary transport failures remain on the existing HTTP 502 paths.
-- `index.html` remains the source of truth for client log/search/quick-input/rotation behavior that has not been safely extracted into active modules.
-- Local handoff now points future work through the current parent starter `START_HERE.md` before selecting work mode/protocol, while retaining the app's existing contracts and historical bootstrap provenance.
+- `index.html` remains the source of truth for client log/search/quick-input/rotation JavaScript behavior that has not been safely extracted into active modules.
+- Local handoff points future work through the current parent starter `START_HERE.md` before selecting work mode/protocol, while retaining the app's existing contracts and historical bootstrap provenance.
 
 ## Verification
 
+- The stylesheet extraction changes only the client build marker, removes the former inline `<style>` block, and adds the `./styles.css` link; the compare against the immediately preceding source commit shows no JavaScript or DOM behavior change in `index.html`.
+- `scripts/check-client-contract.mjs` now requires the external stylesheet link, rejects recreation of the application stylesheet as an inline `<style>` block, and checks representative selectors in `styles.css`.
 - Existing repository checks remain available through `npm test` and its focused subcommands.
-- The handoff contract now verifies the parent `START_HERE.md` entrypoint, the three parent work modes, public-handoff filtering metadata, and the existing Major Change handoff markers.
-- Repository-wide `npm test` could not be executed in the current environment because direct GitHub network access for a local checkout is unavailable; connector-backed source inspection was used for this documentation/handoff-only alignment.
-- No client runtime, Worker runtime, API behavior, data contract, storage contract, or deployment configuration was changed in this alignment batch.
+- Repository-wide `npm test` cannot be executed in the current connector-only environment because a local checkout has no direct GitHub network access. Connector-backed source and commit-diff verification was used for this batch.
+- Worker runtime, API behavior, data contract, storage contract, and deployment configuration were not changed.
 
 ## Protected contracts
 
@@ -29,13 +31,13 @@ Worker build marker: `2026-08-09-v23`
 - existing DOM IDs and primary UI behavior;
 - record/date formats and CSV columns/format;
 - existing client log/search/quick-input/rotation semantics;
+- active application stylesheet boundary at `styles.css`;
 - Cloudflare Pages deployment from `main`.
 
 ## Current maintenance decision
 
-- Parent starter drift was treated as handoff drift only; no runtime restructuring was performed merely to match the template.
-- `ai-context.json` now distinguishes historical bootstrap starter metadata from current parent entrypoints/rules.
-- `llms.txt` now routes future work through current `START_HERE.md` before protocol selection.
-- Handoff regression checks were strengthened so these entrypoints and filtering rules cannot silently disappear.
-- Client build remains `20260809-02`; Worker build remains `2026-08-09-v23` because runtime behavior did not change.
-- Required alignment work for this general maintenance request is complete. Further client extraction/refactoring remains optional until tied to a concrete maintenance or feature need with runtime wiring and verification in the same flow.
+- CSS responsibility extraction: complete and active in the runtime source.
+- Client build: `20260818-01`.
+- Worker build remains `2026-08-09-v23` because Worker runtime was not changed.
+- No unused staged CSS copy remains in `index.html`.
+- Further JavaScript responsibility extraction is not bundled into this batch; it should proceed only one active responsibility at a time with runtime wiring and regression verification in the same flow.
