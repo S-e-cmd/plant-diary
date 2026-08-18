@@ -1,8 +1,10 @@
 import { dateRange, dayDistance, planTiming } from './log-date-utils.js';
 import { filterLogs, filterPeriod, isSearchActive, paginateLogs, sortLogs } from './log-list-utils.js';
+import { installLogToolsUi } from './log-tools-ui.js';
 
 export function createLogRuntime(getState, getToday) {
   if (typeof getState !== 'function') throw new TypeError('getState is required');
+  installLogToolsUi(getState);
   const todayProvider = typeof getToday === 'function' ? getToday : () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
