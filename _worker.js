@@ -1,9 +1,9 @@
 import { GasResponseError, GasTimeoutError, fetchGas, parseGasJson } from './worker/gas-transport.js';
 import { ApiContractError, normalizeApiBody } from './worker/api-contract.js';
 
-const API_PATH = '/api'; // build: 2026-08-19-v30
+const API_PATH = '/api'; // build: 2026-08-19-v31
 const API_METHOD = 'POST';
-const STARTUP_SCRIPT = '<script src="./client/startup-loader.js"></script>';
+const STARTUP_SCRIPT_PATH = '/client/startup-loader.js';
 
 export default {
   async fetch(request, env) {
@@ -25,19 +25,21 @@ async function serveAsset_(request, env, pathname) {
   if (!contentType.includes('text/html')) return response;
 
   const html = await response.text();
-  if (html.includes('client/startup-loader.js')) {
+  const marker = '<script>';
+  if (!html.includes(marker) || html.includes('data-startup-loader')) {
     return new Response(html, { status: response.status, headers: response.headers });
   }
 
-  const marker = '<script>';
-  if (!html.includes(marker)) {
-    return new Response(html, { status: response.status, headers: response.headers });
-  }
+  const loaderUrl = new URL(STARTUP_SCRIPT_PATH, request.url);
+  const loaderResponse = await env.ASSETS.fetch(new Request(loaderUrl, { method: 'GET' }));
+  const startupScript = loaderResponse.ok
+    ? `<script data-startup-loader>\n${await loaderResponse.text()}\n</script>`
+    : `<script src=".${STARTUP_SCRIPT_PATH}" data-startup-loader></script>`;
 
   const headers = new Headers(response.headers);
   headers.delete('content-length');
   headers.set('cache-control', 'no-store');
-  return new Response(html.replace(marker, `${STARTUP_SCRIPT}\n${marker}`), {
+  return new Response(html.replace(marker, `${startupScript}\n${marker}`), {
     status: response.status,
     headers
   });
