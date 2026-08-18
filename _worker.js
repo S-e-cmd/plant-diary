@@ -1,7 +1,7 @@
 import { GasResponseError, GasTimeoutError, fetchGas, parseGasJson } from './worker/gas-transport.js';
-import { normalizeApiBody } from './worker/api-contract.js';
+import { ApiContractError, normalizeApiBody } from './worker/api-contract.js';
 
-const API_PATH = '/api'; // build: 2026-08-19-v26
+const API_PATH = '/api'; // build: 2026-08-19-v27
 const API_METHOD = 'POST';
 
 export default {
@@ -35,6 +35,10 @@ async function handleApiRequest_(request) {
     const data = await parseGasJson(gasResponse);
     return json_(data, gasResponse.ok ? 200 : gasResponse.status);
   } catch (error) {
+    if (error instanceof ApiContractError) {
+      return json_({ ok: false, error: error.message }, 400);
+    }
+
     if (error instanceof GasTimeoutError) {
       return json_({ ok: false, error: error.message }, 504);
     }
