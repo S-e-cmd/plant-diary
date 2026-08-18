@@ -80,6 +80,7 @@
     void fetchJsonData(input, init).then(({ response, body }) => {
       if (!response.ok || !body?.ok || !body.data) return;
       writeSnapshot(body.data, today);
+      if (typeof globalThis.applyBackgroundForecasts === 'function') globalThis.applyBackgroundForecasts(body.data);
       if (typeof globalThis.applyBootstrap === 'function') globalThis.applyBootstrap(body.data);
     }).catch(() => {});
   }
