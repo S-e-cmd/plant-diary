@@ -34,7 +34,7 @@ const savedDraft=JSON.parse(localStorage.getItem('plantDiaryInputDraft')||'null'
 const savedSearches=JSON.parse(localStorage.getItem('plantDiarySavedSearches')||'[]');
 const state={inputType:savedDraft?.inputType||'actual',entries:savedDraft?.entries||[],actuals:[],plans:[],trash:[],pinned:{},summaries:{daily:[],weekly:[],monthly:[]},weather:null,forecasts:[],forecastHourly:[],weatherRules:{spray:{rain:0.5,rainProbability:40,wind:5},liquid:{rain:0.5,rainProbability:40,wind:5}},masters:{},spreadsheetUrl:'',view:'day',cursor:new Date(),planFilter:'pending',search:{q:'',start:'',end:'',type:'',status:'',category:'',special:''},completingPlanId:'',rotationExpanded:false,busy:false,collapsed:savedCollapsed,selectionMode:false,selectedPlans:new Set(),visibleLogs:[],quickFavorites:savedQuickFavorites,quickMap:new Map(),logPage:1,logPageSize:20,logSort:'desc',outlookDays:7,expandedLogs:new Set(),savedSearches,intervalRules:[],analysis:null,settingsLoaded:false};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const localDate=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const fmtDate=s=>s?new Date(`${s}T12:00:00`).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric',weekday:'short'}):'日付未定';
 $('#inputDate').value=savedDraft?.date||localDate(new Date());
