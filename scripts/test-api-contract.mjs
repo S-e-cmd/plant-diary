@@ -33,10 +33,12 @@ assert.deepEqual(
   { action: 'batchPlans', ids: ['p1'], operation: 'postpone', date: '2026-08-21', kind: 'postpone' }
 );
 
-assert.throws(
-  () => normalizeApiPayload({ action: 'bulkPlans', ids: ['p1'], operation: 'postpone' }),
-  error => error instanceof ApiContractError && error.message === '一括延期には延期後の日付が必要です。'
-);
+for (const date of [undefined, '', '2026-8-21', '2026-02-29']) {
+  assert.throws(
+    () => normalizeApiPayload({ action: 'bulkPlans', ids: ['p1'], operation: 'postpone', date }),
+    error => error instanceof ApiContractError && error.message === '一括延期には有効な延期後の日付（YYYY-MM-DD）が必要です。'
+  );
+}
 
 assert.deepEqual(
   normalizeApiPayload({ action: 'skipRotation', id: 'p1' }),
