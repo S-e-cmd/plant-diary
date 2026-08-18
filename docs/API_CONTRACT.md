@@ -11,7 +11,7 @@ The browser talks only to same-origin `POST /api`. `_worker.js` owns compatibili
 | `parse` | `analyze` | `rawText -> text`, `type -> inputType`; preserves `date` |
 | `calendar` | `syncPlanCalendar` | preserves `id` |
 | `calendarBulk` | `syncAllPlansCalendar` | GAS operates on all eligible unsynced dated plans; browser `ids` are not forwarded |
-| `bulkPlans` | `batchPlans` | `operation -> kind`; preserves `ids` and `date` when supplied |
+| `bulkPlans` | `batchPlans` | `operation -> kind`; preserves `ids`; postpone preserves validated `date` |
 
 All other action names are forwarded unchanged. In particular, `skipRotation` must pass through unchanged to GAS.
 
@@ -21,11 +21,13 @@ All other action names are forwarded unchanged. In particular, `skipRotation` mu
 
 The GAS backend owns that behavior.
 
-## Bulk postpone constraint
+## Bulk postpone contract
 
-GAS `batchPlans(kind='postpone')` requires a target `date`. Worker normalization must not invent one.
+The browser bulk-postpone flow collects `延期後の日付（YYYY-MM-DD）` before sending the request. Cancelling the prompt performs no mutation.
 
-If the browser sends `bulkPlans(operation='postpone')` without `date`, Worker returns HTTP 400 with `一括延期には延期後の日付が必要です。` and does not call GAS. Once the browser flow is safely changed to collect a date, the same request will normalize to `batchPlans` and pass the supplied date through.
+A valid request is `bulkPlans(operation='postpone', ids=[...], date='YYYY-MM-DD')`. Worker converts it to `batchPlans(kind='postpone')` and preserves the supplied date.
+
+Worker independently validates that the target is a real calendar date in exact `YYYY-MM-DD` form. Missing dates, malformed values such as `2026-8-21`, and impossible dates such as `2026-02-29` return HTTP 400 before GAS is called. Worker never invents or normalizes a target date.
 
 ## Protected boundary
 
