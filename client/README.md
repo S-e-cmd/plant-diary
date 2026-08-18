@@ -22,6 +22,12 @@
 
 クイック入力の純粋処理は `scripts/test-quick-input-utils.mjs` で固定しています。お気に入りのLocalStorage契約、表示DOM、保存同期、クイック入力から実施入力へ遷移するUI処理自体は、runtime切替までは `index.html` を正本とします。
 
+## Rotation extraction boundary
+
+- `rotation-utils.js` — ローテーション予定判定、未完了枠抽出、実施履歴順序、表示用current/next/afterモデル、循環ローテーションの次周要否判定。
+
+ローテーションの純粋処理は `scripts/test-rotation-utils.mjs` で固定しています。画面描画、実施・見送りAPI呼び出し、GAS側の次周生成はランタイム境界のため、現時点では `index.html` / GASを正本とします。
+
 ## Rule
 
 分離時は未使用moduleだけを増やさず、元の関数名・閾値・DOM契約・state構造・API payloadを維持したまま、runtime wiringと回帰確認を同じ整備フロー内で完了させます。
