@@ -2,7 +2,7 @@
 
 Updated: 2026-08-19
 Client build marker: `20260818-01`
-Worker build marker: `2026-08-19-v25`
+Worker build marker: `2026-08-19-v26`
 
 ## Current state
 
@@ -13,7 +13,7 @@ Worker build marker: `2026-08-19-v25`
 - Quick-input extraction is also contract-backed: `client/quick-input-utils.js` contains quick identity, template generation, favorite matching, and recent-candidate de-duplication/order behavior equivalent to the current inline implementation.
 - Rotation extraction is contract-backed: `client/rotation-utils.js` contains rotation-plan detection, active-frame selection, execution-history ordering, current/next/after view-model selection, and cyclic-next-cycle detection.
 - Worker/GAS transport responsibilities are split and active in production code.
-- GAS transport points to the current deployed GAS Web App URL supplied on 2026-08-19.
+- GAS transport points to the current deployed GAS Web App URL supplied on 2026-08-19; the endpoint was updated again during the current maintenance pass and the Worker build was advanced accordingly.
 - Worker API normalization is active: browser `parse / calendar / calendarBulk / bulkPlans` are converted to GAS `analyze / syncPlanCalendar / syncAllPlansCalendar / batchPlans` with the required payload field aliases.
 - GAS transport has a 25-second timeout; timeout responses use HTTP 504 with an explicit retry message.
 - Invalid GAS JSON and ordinary transport failures remain on the existing HTTP 502 paths.
@@ -31,7 +31,7 @@ Worker build marker: `2026-08-19-v25`
 - Existing repository checks remain available through `npm test` and its focused subcommands.
 - Repository-wide `npm test` cannot be executed in the current connector-only environment because a local checkout has no direct GitHub network access. Connector-backed source and commit-diff verification is used for repository state instead of GitHub Actions.
 - Client runtime, data/storage formats, and public UI behavior were not changed by the rotation utility extraction.
-- Worker runtime changed for the current GAS endpoint and API compatibility normalization; its build marker is `2026-08-19-v25`.
+- Worker runtime changed for the current GAS endpoint and API compatibility normalization; its build marker is `2026-08-19-v26`.
 
 ## Protected contracts
 
@@ -58,6 +58,6 @@ Worker build marker: `2026-08-19-v25`
 - Browser/GAS action-name drift for `parse / calendar / calendarBulk / bulkPlans` is resolved at the Worker boundary and documented in `docs/API_CONTRACT.md`.
 - `skipRotation` is not equivalent to ordinary cancellation and remains a GAS business-logic requirement: cancel current frame and append the same cyclic rotation order as a new pending tail frame.
 - Bulk postpone remains an unresolved browser-flow gap because GAS requires a target date and the current browser call does not collect/send one. Worker must not invent a date.
-- Current GitHub connector mutation supports whole-file replacement for `index.html`, not a safe partial patch. Do not work around this by introducing hidden runtime injection or coupling unrelated modules merely to force the switch; keep the existing page runtime until a safe exact-file edit path is available.
+- The exact `bulkSelected()` location in `index.html` has been identified. Do not replace the full 50KB page merely to change this single flow through the current whole-file GitHub mutation interface; wait for a safe exact-file edit path rather than risking unrelated runtime changes.
 - Client build remains `20260818-01` because the extracted client modules are not yet wired into page runtime.
-- Worker build is `2026-08-19-v25` after GAS endpoint and API-contract normalization updates.
+- Worker build is `2026-08-19-v26` after the latest GAS endpoint update.
