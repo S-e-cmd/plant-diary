@@ -1,3 +1,5 @@
+import { requestApi } from './api-client.js';
+
 let installed = false;
 
 function esc(value) {
@@ -33,19 +35,6 @@ export function renderTrashHtml(items = []) {
   return rows || '<div class="empty">削除済みの記録はありません</div>';
 }
 
-async function request(payload) {
-  const response = await fetch('/api', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  let body;
-  try { body = await response.json(); }
-  catch { throw new Error('APIから正しい応答が返りませんでした。'); }
-  if (!response.ok || !body?.ok) throw new Error(body?.error || '通信に失敗しました。');
-  return body.data;
-}
-
 function openModal(title, html) {
   const modal = document.querySelector('#modal');
   const titleEl = document.querySelector('#modalTitle');
@@ -78,7 +67,7 @@ function notify(message) {
 async function fetchAnalysis(getState) {
   setBusy(true, '分析中…');
   try {
-    const data = await request({ action: 'getAnalysis' });
+    const data = await requestApi({ action: 'getAnalysis' });
     getState().analysis = data;
     return data;
   } catch (error) {
@@ -95,7 +84,7 @@ function bindRestoreButtons() {
       const [type, id] = button.dataset.restoreEntry.split(':');
       setBusy(true, '復元中…');
       try {
-        const data = await request({ action: 'restore', type, id });
+        const data = await requestApi({ action: 'restore', type, id });
         if (typeof globalThis.applyBootstrap === 'function') globalThis.applyBootstrap(data);
         else document.querySelector('#syncBtn')?.click();
         closeModal();
@@ -131,7 +120,7 @@ export function installLogToolsUi(getState) {
   trashBtn.onclick = async () => {
     setBusy(true, '削除済みを取得中…');
     try {
-      const data = await request({ action: 'bootstrap' });
+      const data = await requestApi({ action: 'bootstrap' });
       if (typeof globalThis.applyBootstrap === 'function') globalThis.applyBootstrap(data);
       else getState().trash = data.trash || [];
       if (openModal('削除済みの記録', renderTrashHtml(data.trash || []))) bindRestoreButtons();
