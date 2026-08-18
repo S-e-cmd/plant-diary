@@ -1,4 +1,4 @@
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdwRh9gKVnNcRKQwvf22zuXBQLAM1pm4NuiXfPWIDdj884SWzlWIb4lGeu7XdSVPlcWQ/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyWs2tombvb0LkWymUOcNz_TLeDmOLNjnDJEPB3Kwoxm8ccxTBsKCLTevMahDB7ZreaOA/exec';
 export const GAS_TIMEOUT_MS = 25000;
 
 export class GasResponseError extends Error {}
