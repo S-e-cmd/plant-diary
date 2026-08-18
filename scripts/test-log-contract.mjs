@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { dateRange, dayDistance, planTiming } from '../client/log-date-utils.js';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const logUtils = await readFile(new URL('../client/log-date-utils.js', import.meta.url), 'utf8');
@@ -43,5 +44,25 @@ if (switched) {
 required(logUtils, /export function dateRange\(/, 'log-date-utils exports dateRange');
 required(logUtils, /export function dayDistance\(/, 'log-date-utils exports dayDistance');
 required(logUtils, /export function planTiming\(/, 'log-date-utils exports planTiming');
+
+const day = dateRange(new Date('2026-08-18T12:00:00'), 'day');
+assert.equal(day.start, '2026-08-18');
+assert.equal(day.end, '2026-08-18');
+
+const week = dateRange(new Date('2026-08-18T12:00:00'), 'week');
+assert.deepEqual([week.start, week.end], ['2026-08-17', '2026-08-23']);
+
+const month = dateRange(new Date('2026-08-18T12:00:00'), 'month');
+assert.deepEqual([month.start, month.end], ['2026-08-01', '2026-08-31']);
+
+assert.equal(dayDistance({ date: '2026-08-18' }, '2026-08-18'), '今日');
+assert.equal(dayDistance({ endDate: '2026-08-16' }, '2026-08-18'), '2日超過');
+assert.equal(dayDistance({ startDate: '2026-08-21' }, '2026-08-18'), 'あと3日');
+assert.equal(planTiming({}, '2026-08-18'), 'undated');
+assert.equal(planTiming({ date: '2026-08-17' }, '2026-08-18'), 'overdue');
+assert.equal(planTiming({ date: '2026-08-18' }, '2026-08-18'), 'today');
+assert.equal(planTiming({ startDate: '2026-08-17', endDate: '2026-08-19' }, '2026-08-18'), 'today');
+assert.equal(planTiming({ date: '2026-08-19' }, '2026-08-18'), 'future');
+console.log('ok - log date utility behavior matches existing contracts');
 
 console.log(`log contract: ok (${switched ? 'switched' : 'staged'})`);
