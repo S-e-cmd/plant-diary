@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { createWeatherRuntime } from '../client/weather-runtime.js';
 
 const state={
+  weather:null,
+  forecasts:[],
   weatherRules:{
     spray:{rain:0.5,rainProbability:40,wind:5},
     liquid:{rain:1,rainProbability:60,wind:4}
@@ -31,4 +33,15 @@ assert.equal(runtime.safeWindows('2026-08-08','spray'),'6〜12時');
 state.weatherRules.spray.wind=1;
 assert.equal(runtime.forecastStrongWind({maxWind:1},'spray'),true,'runtime reads current state instead of a stale snapshot');
 
+const refreshed={
+  weather:{date:'2026-08-19',maxTemp:34},
+  forecasts:[{date:'2026-08-20',code:1}],
+  forecastHourly:[{datetime:'2026-08-19T09:00:00+09:00',rain:0,maxWind:2}]
+};
+globalThis.applyBackgroundForecasts(refreshed);
+assert.deepEqual(state.weather,refreshed.weather);
+assert.deepEqual(state.forecasts,refreshed.forecasts);
+assert.deepEqual(state.forecastHourly,refreshed.forecastHourly);
+
+delete globalThis.applyBackgroundForecasts;
 console.log('ok - weather runtime adapter contract');
