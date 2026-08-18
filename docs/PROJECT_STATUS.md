@@ -9,6 +9,8 @@ Worker build marker: `2026-08-19-v29`
 - Cloudflare Pages deployment with `main` as the production branch.
 - Application presentation CSS has been extracted from `index.html` into active `styles.css` and is loaded directly by the page.
 - Weather decision helpers and browser-download mechanics are active external client modules.
+- Startup no longer has to block on the full GAS bootstrap on repeated same-day launches: `client/startup-runtime.js` and `client/startup-snapshot.js` return a same-day startup snapshot immediately for the Today / Input / Plans tabs, then fetch the full current bootstrap in the background and re-apply it automatically when it arrives.
+- Startup snapshots contain recent actuals, required same-day / rotation history, active plans, pinned state, weather/forecast data, masters, app settings, and interval rules. Trash and summaries are intentionally not persisted in the startup snapshot.
 - Log extraction now has a complete runtime boundary: `client/log-date-utils.js` and `client/log-list-utils.js` own pure processing; `client/log-runtime.js` binds those operations to application state without owning DOM rendering.
 - Quick-input extraction now has a complete runtime boundary: `client/quick-input-utils.js` owns pure identity/template/candidate logic; `client/quick-input-runtime.js` binds favorites and recent records to application state without owning LocalStorage or DOM rendering.
 - Rotation extraction now has a complete runtime boundary: `client/rotation-utils.js` owns rotation selection/view-model/next-cycle detection; `client/rotation-runtime.js` binds those operations to application state without owning API mutation or GAS business rules.
@@ -27,6 +29,8 @@ Worker build marker: `2026-08-19-v29`
 ## Verification
 
 - `scripts/check-client-contract.mjs` requires the external stylesheet link, rejects recreation of the application stylesheet as an inline `<style>` block, checks representative selectors, guards the complete `&quot;` HTML-escaping entity, and fixes the bulk-postpone prompt/date-payload runtime contract.
+- `scripts/test-startup-snapshot.mjs` verifies same-day snapshot validity, recent-actual retention, rotation-history retention, active-plan filtering, and storage round-trips.
+- `scripts/test-startup-runtime.mjs` verifies cached bootstrap is returned immediately while one real bootstrap request runs in the background, refreshes the snapshot, and re-applies fresh data to the active page.
 - `scripts/test-log-contract.mjs` covers daily/weekly/monthly boundaries, overdue/today/future classification, text and field filtering, special spray/liquid filters, period filtering, ascending/descending ordering, and 20-item pagination behavior.
 - `scripts/test-log-runtime.mjs` verifies state-bound date/timing access and the combined search/period/sort/pagination log list result.
 - `scripts/test-quick-input-utils.mjs` covers field identity order, template defaults, favorite matching, duplicate suppression, newest-first ordering, and result limits.
@@ -36,8 +40,7 @@ Worker build marker: `2026-08-19-v29`
 - `scripts/test-plan-bulk-utils.mjs` covers selected-ID normalization, valid and invalid calendar dates, complete/cancel payloads, postpone payloads, empty selection, and unsupported operations.
 - `scripts/test-api-contract.mjs` fixes browser-to-GAS normalization, confirms `skipRotation` passthrough, and rejects missing/malformed/impossible bulk-postpone dates.
 - `scripts/test-worker-contract.mjs` confirms invalid bulk-postpone dates return HTTP 400 before any upstream GAS fetch.
-- Focused log / quick-input / rotation / plan-bulk / API-contract tests are included in the normal `npm test` sequence.
-- The full `index.html` runtime edit for bulk postpone was verified by commit comparison. An incidental one-character HTML-escape regression introduced during whole-file replacement was detected immediately, restored, and the final comparison from the pre-edit baseline shows only the intended build-marker and `bulkSelected()` changes.
+- Focused startup / log / quick-input / rotation / plan-bulk / API-contract tests are included in the normal `npm test` sequence.
 - Existing repository checks remain available through `npm test` and its focused subcommands. GitHub Actions are not required for this maintenance flow.
 
 ## Protected contracts
@@ -54,20 +57,22 @@ Worker build marker: `2026-08-19-v29`
 - GAS owns spreadsheet mutation and rotation business logic; Worker may normalize transport names and validate required transport fields but must not emulate spreadsheet behavior;
 - bulk postpone requires a caller-supplied real `YYYY-MM-DD` date; no layer may invent a date;
 - runtime boundary modules may consume application state but must not own unrelated UI rendering, LocalStorage, or GAS spreadsheet mutation;
+- startup snapshots are same-day only and may not be used for the Logs tab because partial cached history must not be presented as a complete log result;
 - active application stylesheet boundary at `styles.css`;
 - Cloudflare Pages deployment from `main`.
 
 ## Current maintenance decision
 
+- Startup performance is the current priority.
+- Repeated same-day startup is now non-blocking for Today / Input / Plans through local startup snapshots with background refresh.
+- First launch of the day still depends on the full GAS bootstrap until the prepared two-stage GAS `bootstrapCore` deployment is published; that is the remaining startup bottleneck.
 - CSS responsibility extraction: complete and active in runtime source.
 - Log runtime boundary: implemented and regression-tested; `index.html` delegation remains pending.
 - Quick-input runtime boundary: implemented and regression-tested; `index.html` delegation remains pending.
 - Rotation runtime boundary: implemented and regression-tested; `index.html` delegation remains pending.
-- Bulk-plan request pure-processing boundary: implemented and regression-tested; browser UI currently implements the same request contract inline.
 - Bulk postpone runtime flow: complete. Browser collects the date, Worker validates it, and valid requests normalize to GAS `batchPlans(kind='postpone')`.
 - A cyclic rotation is explicitly contract-tested to require a next cycle after all cyclic frames become completed/cancelled; GAS is responsible for actually creating the next-cycle rows.
 - Browser/GAS action-name drift for `parse / calendar / calendarBulk / bulkPlans` is resolved at the Worker boundary and documented in `docs/API_CONTRACT.md`.
 - `skipRotation` is not equivalent to ordinary cancellation and passes through unchanged to GAS.
-- Startup performance is now being addressed first: the current optimized GAS deployment reduces repeated Spreadsheet opens and duplicate full-sheet reads without changing the browser bootstrap response contract.
-- Client build remains `20260819-01` because the new log/quick/rotation runtime boundaries are not yet wired into `index.html`.
+- Client page marker remains `20260819-01`; startup behavior changed through an already-loaded client runtime module without another whole-file `index.html` rewrite.
 - Worker build is `2026-08-19-v29` for the optimized GAS deployment.
