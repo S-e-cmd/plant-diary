@@ -6,6 +6,7 @@
   let startupHandled = false;
 
   const localDate = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const startupForecast = today => ({ date: today, code: null, source: 'startup-core' });
 
   function isBootstrapRequest(input, init) {
     const method = String(init?.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
@@ -20,10 +21,17 @@
     }
   }
 
+  function ensureStartupForecast(data, today) {
+    if (!data || typeof data !== 'object') return data;
+    if (!Array.isArray(data.forecasts) || !data.forecasts.length) data.forecasts = [startupForecast(today)];
+    return data;
+  }
+
   function readSnapshot(today) {
     try {
       const snapshot = JSON.parse(localStorage.getItem(KEY) || 'null');
-      return snapshot?.version === VERSION && snapshot?.today === today && snapshot?.data ? snapshot.data : null;
+      if (snapshot?.version !== VERSION || snapshot?.today !== today || !snapshot?.data) return null;
+      return ensureStartupForecast(snapshot.data, today);
     } catch {
       return null;
     }
@@ -51,7 +59,7 @@
         pinned: source.pinned || {},
         summaries: { daily: [], weekly: [], monthly: [] },
         weather: source.weather || null,
-        forecasts: source.forecasts || [],
+        forecasts: Array.isArray(source.forecasts) && source.forecasts.length ? source.forecasts : [startupForecast(today)],
         forecastHourly: source.forecastHourly || [],
         masters: source.masters || {},
         appSettings: source.appSettings || {},
@@ -74,6 +82,14 @@
     let body = null;
     try { body = await response.clone().json(); } catch {}
     return { response, body };
+  }
+
+  function jsonResponse(body, response) {
+    const headers = new Headers(response.headers);
+    headers.set('Content-Type', 'application/json; charset=utf-8');
+    headers.set('Cache-Control', 'no-store');
+    headers.delete('content-length');
+    return new Response(JSON.stringify(body), { status: response.status, headers });
   }
 
   function refreshFull(input, init, today) {
@@ -110,8 +126,11 @@
 
     const coreInit = { ...init, body: JSON.stringify({ action: 'bootstrapCore' }) };
     const { response, body } = await fetchJsonData(input, coreInit);
-    if (response.ok && body?.ok && body.data) writeSnapshot(body.data, today);
+    if (response.ok && body?.ok && body.data) {
+      ensureStartupForecast(body.data, today);
+      writeSnapshot(body.data, today);
+    }
     refreshFull(input, init, today);
-    return response;
+    return body ? jsonResponse(body, response) : response;
   };
 })();
