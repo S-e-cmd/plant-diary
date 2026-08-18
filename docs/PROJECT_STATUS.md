@@ -1,6 +1,6 @@
 # Project Status
 
-Updated: 2026-08-09
+Updated: 2026-08-18
 Client build marker: `20260809-02`
 Worker build marker: `2026-08-09-v23`
 
@@ -9,18 +9,17 @@ Worker build marker: `2026-08-09-v23`
 - Cloudflare Pages deployment with `main` as the production branch.
 - Weather decision helpers and browser-download mechanics are active external client modules.
 - Worker/GAS transport responsibilities are split and active in production code.
-- GAS transport now has a 25-second timeout; timeout responses use HTTP 504 with an explicit retry message.
+- GAS transport has a 25-second timeout; timeout responses use HTTP 504 with an explicit retry message.
 - Invalid GAS JSON and ordinary transport failures remain on the existing HTTP 502 paths.
-- Previously added but unused staged client modules for log dates, log filtering, quick input, and rotation have been removed together with their migration-only tests/scripts/runbook.
-- `index.html` remains the actual source of truth for those client behaviors until a future extraction can be wired and verified in the same flow.
+- `index.html` remains the source of truth for client log/search/quick-input/rotation behavior that has not been safely extracted into active modules.
+- Local handoff now points future work through the current parent starter `START_HERE.md` before selecting work mode/protocol, while retaining the app's existing contracts and historical bootstrap provenance.
 
 ## Verification
 
-- Worker timeout behavior was reproduced in an isolated Node ESM test environment.
-- Confirmed scenarios: static asset delegation, OPTIONS handling, normal GAS response with timeout signal, explicit timeout -> 504, ordinary network failure -> 502.
-- Repository `scripts/test-worker-contract.mjs` now covers the timeout path.
-- Unified `npm test` no longer references removed staged modules.
-- A complete repository-wide `npm test` is still not executable from the current connector-only environment because a local checkout cannot access GitHub.
+- Existing repository checks remain available through `npm test` and its focused subcommands.
+- The handoff contract now verifies the parent `START_HERE.md` entrypoint, the three parent work modes, public-handoff filtering metadata, and the existing Major Change handoff markers.
+- Repository-wide `npm test` could not be executed in the current environment because direct GitHub network access for a local checkout is unavailable; connector-backed source inspection was used for this documentation/handoff-only alignment.
+- No client runtime, Worker runtime, API behavior, data contract, storage contract, or deployment configuration was changed in this alignment batch.
 
 ## Protected contracts
 
@@ -34,8 +33,9 @@ Worker build marker: `2026-08-09-v23`
 
 ## Current maintenance decision
 
-- Unused internal-only staging cleanup: complete.
-- Worker timeout stability change: complete and reflected in active runtime code.
-- Client build: unchanged at `20260809-02` because client runtime was not changed.
-- Worker build: `2026-08-09-v23`.
-- Remaining maintainability concern: `index.html` is still large, but future extraction should only be performed when runtime wiring and verification can be completed together rather than staged separately.
+- Parent starter drift was treated as handoff drift only; no runtime restructuring was performed merely to match the template.
+- `ai-context.json` now distinguishes historical bootstrap starter metadata from current parent entrypoints/rules.
+- `llms.txt` now routes future work through current `START_HERE.md` before protocol selection.
+- Handoff regression checks were strengthened so these entrypoints and filtering rules cannot silently disappear.
+- Client build remains `20260809-02`; Worker build remains `2026-08-09-v23` because runtime behavior did not change.
+- Required alignment work for this general maintenance request is complete. Further client extraction/refactoring remains optional until tied to a concrete maintenance or feature need with runtime wiring and verification in the same flow.

@@ -16,6 +16,23 @@ for (const file of requiredFiles) {
 }
 
 const context = JSON.parse(fs.readFileSync('ai-context.json', 'utf8'));
+if (context?.starter?.entrypoint !== 'https://raw.githubusercontent.com/S-e-cmd/app-starter-template/main/START_HERE.md') {
+  throw new Error('ai-context.json must reference the current parent START_HERE.md entrypoint');
+}
+for (const mode of ['create-new', 'align-existing', 'transform-existing']) {
+  if (!context?.starter?.workModes?.includes(mode)) {
+    throw new Error(`ai-context.json is missing starter work mode: ${mode}`);
+  }
+}
+if (context?.publicSafety?.doNotCopyRepositoryInternalContextWithoutFiltering !== true) {
+  throw new Error('ai-context.json must keep public handoff filtering enabled');
+}
+if (!Array.isArray(context?.publicSafety?.allowedCategories) || context.publicSafety.allowedCategories.length === 0) {
+  throw new Error('ai-context.json must declare public-safe allowed categories');
+}
+if (context?.handoff?.readStarterEntrypointFirst !== true) {
+  throw new Error('ai-context.json must require the current parent starter entrypoint');
+}
 if (context?.docs?.majorChangeHandoff !== 'docs/MAJOR_CHANGE_HANDOFF.md') {
   throw new Error('ai-context.json must reference docs/MAJOR_CHANGE_HANDOFF.md');
 }
@@ -27,7 +44,7 @@ if (context?.handoff?.recheckParentMajorChangePlanningBeforeMajorArchitectureOrT
 }
 
 const llms = fs.readFileSync('llms.txt', 'utf8');
-for (const marker of ['MAJOR_CHANGE_PLANNING.md', 'PROTOCOL_ROUTING_RULES.md']) {
+for (const marker of ['START_HERE.md', 'MAJOR_CHANGE_PLANNING.md', 'PROTOCOL_ROUTING_RULES.md']) {
   if (!llms.includes(marker)) throw new Error(`llms.txt is missing parent starter marker: ${marker}`);
 }
 

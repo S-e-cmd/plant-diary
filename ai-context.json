@@ -3,10 +3,16 @@
   "schemaVersionMeaning": "ai-context-document-schema",
   "starter": {
     "schemaVersion": 5,
-    "schemaVersionMeaning": "parent-starter-manifest-schema",
+    "schemaVersionMeaning": "parent-starter-manifest-schema-at-bootstrap",
     "bootstrapTemplateCommitSha": "4e0b323bfedab6765bc7903b17fb850d5b83293c",
     "bootstrapTemplateRevision": "existing-app-alignment-2026-08-08",
-    "currentParentManifestUrl": "https://raw.githubusercontent.com/S-e-cmd/app-starter-template/main/manifest.json"
+    "currentParentManifestUrl": "https://raw.githubusercontent.com/S-e-cmd/app-starter-template/main/manifest.json",
+    "entrypoint": "https://raw.githubusercontent.com/S-e-cmd/app-starter-template/main/START_HERE.md",
+    "workModes": [
+      "create-new",
+      "align-existing",
+      "transform-existing"
+    ]
   },
   "template": {
     "name": "core",
@@ -32,19 +38,28 @@
   "publicSafety": {
     "thisFileMayBePublic": true,
     "validateActualValuesBeforePublishing": true,
+    "allowedCategories": [
+      "public-app-name-and-type",
+      "public-repository-reference-when-repository-is-public",
+      "public-entrypoint-and-high-level-responsibility-names",
+      "public-safe-build-and-template-metadata"
+    ],
     "excludedCategories": [
       "secrets-and-credentials",
       "internal-only-urls",
       "private-resource-identifiers",
       "personal-data",
+      "private-repository-confidential-information",
       "unfixed-vulnerability-details",
       "operationally-sensitive-internal-information"
-    ]
+    ],
+    "doNotCopyRepositoryInternalContextWithoutFiltering": true
   },
   "handoff": {
     "readLocalContextFirst": true,
     "thenReadParentManifest": true,
     "latestParentRulesDoNotByThemselvesJustifyExistingAppRestructure": true,
+    "readStarterEntrypointFirst": true,
     "recheckParentMajorChangePlanningBeforeMajorArchitectureOrTransitionWork": true,
     "majorChangeCandidateBoundariesAreNotAuthorization": true
   }

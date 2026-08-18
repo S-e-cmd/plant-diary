@@ -2,12 +2,13 @@
 
 When this application repository is provided for maintenance or continued development:
 
-1. Read /ai-context.json first.
-2. Read the local docs referenced by ai-context.json.
-3. Use the parent starter-template manifest for shared development rules.
+1. Read /ai-context.json first for this application's current contracts and protected targets.
+2. Read the current parent starter `START_HERE.md` before selecting a work mode or protocol.
+3. Read the local docs referenced by ai-context.json, then the parent manifest/protocols required by `START_HERE.md` for the current task.
 4. Preserve existing behavior, data compatibility, deployment method, and public routes unless the current task explicitly changes them.
 5. Update local handoff docs in the same change when architecture, data contracts, UI constraints, or project status change.
 6. Do not restructure this existing app merely to match the starter template.
 7. GitHub Actions are not the default automation mechanism; the existing manual checker workflow is an intentional exception unless the user requests otherwise.
 8. Before any future major architecture, backend, storage, routing, auth, migration, or transition work, re-read the current parent `docs/MAJOR_CHANGE_PLANNING.md` and `docs/PROTOCOL_ROUTING_RULES.md`, then read `docs/MAJOR_CHANGE_HANDOFF.md` for this application's protected contracts and candidate boundaries.
 9. App-specific Major Change candidate boundaries are handoff context only. They do not by themselves mean `major-change-planning-required` and do not authorize implementation, production mutation, migration, or deletion.
+10. Treat the bootstrap starter schema/revision recorded in ai-context.json as historical provenance. Use the current parent `START_HERE.md` and manifest URLs for current shared rules instead of rewriting the app solely because the parent schema changed.
