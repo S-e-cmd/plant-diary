@@ -75,28 +75,29 @@ try {
     });
   });
 
-  await run('bulk postpone without date returns 400 before upstream fetch', async () => {
-    let called = false;
-    globalThis.fetch = async () => {
-      called = true;
-      return new Response(JSON.stringify({ ok: true }), { status: 200 });
-    };
+  for (const date of [undefined, '2026-8-21', '2026-02-29']) {
+    await run(`invalid bulk postpone date ${String(date)} returns 400 before upstream fetch`, async () => {
+      let called = false;
+      globalThis.fetch = async () => {
+        called = true;
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      };
 
-    const response = await worker.fetch(
-      request('/api', {
-        method: 'POST',
-        body: JSON.stringify({ action: 'bulkPlans', ids: ['p1'], operation: 'postpone' })
-      }),
-      { ASSETS: { fetch: originalFetch } }
-    );
+      const payload = { action: 'bulkPlans', ids: ['p1'], operation: 'postpone' };
+      if (date !== undefined) payload.date = date;
+      const response = await worker.fetch(
+        request('/api', { method: 'POST', body: JSON.stringify(payload) }),
+        { ASSETS: { fetch: originalFetch } }
+      );
 
-    assert.equal(called, false);
-    assert.equal(response.status, 400);
-    assert.deepEqual(await json(response), {
-      ok: false,
-      error: '一括延期には延期後の日付が必要です。'
+      assert.equal(called, false);
+      assert.equal(response.status, 400);
+      assert.deepEqual(await json(response), {
+        ok: false,
+        error: '一括延期には有効な延期後の日付（YYYY-MM-DD）が必要です。'
+      });
     });
-  });
+  }
 
   await run('valid GAS JSON is passed through with upstream status and timeout signal', async () => {
     let upstream;
