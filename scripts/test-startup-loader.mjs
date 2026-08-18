@@ -45,6 +45,8 @@ async function loadLoader(label) {
   await import(moduleUrl.href);
 }
 
+const nextTask = () => new Promise(resolve => setTimeout(resolve, 0));
+
 try {
   {
     const calls = [];
@@ -63,8 +65,10 @@ try {
     assert.equal(firstBody.data.bootstrapComplete, false);
     assert.equal(firstBody.data.forecasts.length, 1);
     assert.equal(firstBody.data.forecasts[0].source, 'startup-core');
-    assert.equal(calls[0], 'bootstrapCore');
-    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.deepEqual(calls, ['bootstrapCore'], 'full bootstrap must not start before the initial response is returned');
+
+    await nextTask();
+    await nextTask();
     assert.deepEqual(calls.slice(0, 2), ['bootstrapCore', 'bootstrap']);
     assert.ok(globalThis.localStorage.getItem('plantDiaryStartupSnapshot'));
     assert.equal(forecastHandoff?.weather?.maxTemp, 34);
@@ -102,7 +106,9 @@ try {
     const body = await response.json();
     assert.equal(body.data.forecasts.length, 1);
     assert.equal(body.data.forecasts[0].source, 'startup-core');
-    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.deepEqual(calls, [], 'cached startup response must be returned before background refresh starts');
+    await nextTask();
+    await nextTask();
     assert.deepEqual(calls, ['bootstrap']);
   }
 
@@ -124,7 +130,7 @@ try {
     assert.ok(globalThis.localStorage.getItem('plantDiaryStartupSnapshot'));
   }
 
-  console.log('ok - startup loader avoids forecast blocking and refreshes full forecast state in background');
+  console.log('ok - startup loader returns initial data before deferred full refresh and avoids forecast blocking');
 } finally {
   globalThis.fetch = originalFetch;
   if (originalLocalStorage === undefined) delete globalThis.localStorage;
