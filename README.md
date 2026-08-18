@@ -14,6 +14,7 @@ Cloudflare Pages 配信用のWebアプリです。
 ## ファイル
 
 - `index.html`：アプリ画面、クライアント状態、表示・入力処理
+- `styles.css`：画面全体のスタイル、レスポンシブ表示、機能別の表示ルール
 - `client/weather-runtime.js` / `client/weather-utils.js`：天気判定責務
 - `client/download-utils.js`：ブラウザBlobダウンロード責務
 - `_worker.js`：`/api` とGAS間の通信境界、静的アセット配信
@@ -48,7 +49,7 @@ npm run test:weather
 
 Worker側は、静的配信、`OPTIONS /api`、POST制限、空body、GASへの送信形式、正常JSON応答、JSON不正時と通信失敗時の既存エラー契約を確認します。
 
-クライアント側は、`index.html` のインラインJavaScriptと `client/*.js` を構文確認対象にします。same-origin `/api`、既存LocalStorageキー、主要DOM ID、天気判定・bootstrap周辺の主要関数と既存閾値を横断的に確認し、分離済みmoduleが `index.html` から実際に読み込まれていることも確認します。
+クライアント側は、`index.html` のインラインJavaScriptと `client/*.js` を構文確認対象にします。same-origin `/api`、既存LocalStorageキー、主要DOM ID、天気判定・bootstrap周辺の主要関数と既存閾値を横断的に確認し、分離済みmoduleが `index.html` から実際に読み込まれていることも確認します。`styles.css` の読み込み、インライン主要CSSへの逆戻り、代表的なスタイルselectorの存在も確認します。
 
 ダウンロード責務については、Blob生成・object URL生成/解放・anchor downloadを `client/download-utils.js` に限定し、`index.html` へ再混在しないことを静的チェックします。専用テストではファイル名、MIME type、click、URL解放まで確認します。
 
