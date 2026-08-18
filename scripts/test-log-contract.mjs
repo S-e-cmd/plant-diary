@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { dateRange, dayDistance, planTiming } from '../client/log-date-utils.js';
+import { filterLogs, filterPeriod, isSearchActive, paginateLogs, sortLogs } from '../client/log-list-utils.js';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const logUtils = await readFile(new URL('../client/log-date-utils.js', import.meta.url), 'utf8');
+const logListUtils = await readFile(new URL('../client/log-list-utils.js', import.meta.url), 'utf8');
 
 function required(source, pattern, message) {
   assert.match(source, pattern, message);
@@ -44,6 +46,11 @@ if (switched) {
 required(logUtils, /export function dateRange\(/, 'log-date-utils exports dateRange');
 required(logUtils, /export function dayDistance\(/, 'log-date-utils exports dayDistance');
 required(logUtils, /export function planTiming\(/, 'log-date-utils exports planTiming');
+required(logListUtils, /export function isSearchActive\(/, 'log-list-utils exports isSearchActive');
+required(logListUtils, /export function filterLogs\(/, 'log-list-utils exports filterLogs');
+required(logListUtils, /export function filterPeriod\(/, 'log-list-utils exports filterPeriod');
+required(logListUtils, /export function sortLogs\(/, 'log-list-utils exports sortLogs');
+required(logListUtils, /export function paginateLogs\(/, 'log-list-utils exports paginateLogs');
 
 const day = dateRange(new Date('2026-08-18T12:00:00'), 'day');
 assert.equal(day.start, '2026-08-18');
@@ -64,5 +71,25 @@ assert.equal(planTiming({ date: '2026-08-18' }, '2026-08-18'), 'today');
 assert.equal(planTiming({ startDate: '2026-08-17', endDate: '2026-08-19' }, '2026-08-18'), 'today');
 assert.equal(planTiming({ date: '2026-08-19' }, '2026-08-18'), 'future');
 console.log('ok - log date utility behavior matches existing contracts');
+
+const fixtures = [
+  { id: 'a', type: 'actual', date: '2026-08-18', category: '消毒', action: '薬剤散布', plantName: 'A', pesticide: '薬剤A', status: '' },
+  { id: 'b', type: 'plan', date: '2026-08-19', category: '液肥', action: '液肥', plantName: 'B', liquidFertilizer: '液肥B', status: '未完了' },
+  { id: 'c', type: 'actual', date: '2026-08-17', category: '除草', action: '除草', plantName: 'C', status: '' }
+];
+assert.equal(isSearchActive({ q: '', start: '', end: '', type: '', status: '', category: '', special: '' }), false);
+assert.equal(isSearchActive({ q: '薬剤' }), true);
+assert.deepEqual(filterLogs(fixtures, { q: '薬剤', start: '', end: '', type: '', status: '', category: '', special: '' }).map(x => x.id), ['a']);
+assert.deepEqual(filterLogs(fixtures, { q: '', start: '', end: '', type: 'plan', status: '未完了', category: '', special: 'liquid' }).map(x => x.id), ['b']);
+assert.deepEqual(filterPeriod(fixtures, { start: '2026-08-18', end: '2026-08-19' }).map(x => x.id), ['a', 'b']);
+assert.deepEqual(sortLogs(fixtures, 'desc').map(x => x.id), ['b', 'a', 'c']);
+assert.deepEqual(sortLogs(fixtures, 'asc').map(x => x.id), ['c', 'a', 'b']);
+const paged = paginateLogs(Array.from({ length: 45 }, (_, i) => ({ id: String(i + 1) })), 3, 20);
+assert.equal(paged.pages, 3);
+assert.equal(paged.page, 3);
+assert.equal(paged.start, 40);
+assert.equal(paged.pageItems.length, 5);
+assert.equal(paginateLogs(Array.from({ length: 5 }), 9, 20).page, 1);
+console.log('ok - log search, sort, period, and pagination utilities match existing contracts');
 
 console.log(`log contract: ok (${switched ? 'switched' : 'staged'})`);
