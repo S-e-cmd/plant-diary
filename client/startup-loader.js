@@ -3,6 +3,7 @@
   const VERSION = 1;
   const SUPPORTED_TABS = new Set(['today', 'input', 'plans']);
   const originalFetch = globalThis.fetch.bind(globalThis);
+  let startupHandled = false;
 
   const localDate = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
@@ -85,11 +86,19 @@
 
   globalThis.fetch = async function startupFetch(input, init) {
     if (!isBootstrapRequest(input, init)) return originalFetch(input, init);
+    if (startupHandled) return originalFetch(input, init);
+    startupHandled = true;
 
     const today = localDate(new Date());
     const lastTab = localStorage.getItem('plantDiaryLastTab') || 'today';
-    const snapshot = SUPPORTED_TABS.has(lastTab) ? readSnapshot(today) : null;
 
+    if (!SUPPORTED_TABS.has(lastTab)) {
+      const { response, body } = await fetchJsonData(input, init);
+      if (response.ok && body?.ok && body.data) writeSnapshot(body.data, today);
+      return response;
+    }
+
+    const snapshot = readSnapshot(today);
     if (snapshot) {
       refreshFull(input, init, today);
       return new Response(JSON.stringify({ ok: true, data: snapshot }), {
