@@ -1,20 +1,47 @@
 import { GasResponseError, GasTimeoutError, fetchGas, parseGasJson } from './worker/gas-transport.js';
 import { ApiContractError, normalizeApiBody } from './worker/api-contract.js';
 
-const API_PATH = '/api'; // build: 2026-08-19-v29
+const API_PATH = '/api'; // build: 2026-08-19-v30
 const API_METHOD = 'POST';
+const STARTUP_SCRIPT = '<script src="./client/startup-loader.js"></script>';
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
     if (url.pathname !== API_PATH) {
-      return env.ASSETS.fetch(request);
+      return serveAsset_(request, env, url.pathname);
     }
 
     return handleApiRequest_(request);
   }
 };
+
+async function serveAsset_(request, env, pathname) {
+  const response = await env.ASSETS.fetch(request);
+  if (!response.ok || (pathname !== '/' && pathname !== '/index.html')) return response;
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('text/html')) return response;
+
+  const html = await response.text();
+  if (html.includes('client/startup-loader.js')) {
+    return new Response(html, { status: response.status, headers: response.headers });
+  }
+
+  const marker = '<script>';
+  if (!html.includes(marker)) {
+    return new Response(html, { status: response.status, headers: response.headers });
+  }
+
+  const headers = new Headers(response.headers);
+  headers.delete('content-length');
+  headers.set('cache-control', 'no-store');
+  return new Response(html.replace(marker, `${STARTUP_SCRIPT}\n${marker}`), {
+    status: response.status,
+    headers
+  });
+}
 
 async function handleApiRequest_(request) {
   if (request.method === 'OPTIONS') {
