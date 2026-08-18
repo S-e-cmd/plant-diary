@@ -20,7 +20,7 @@
     "repositoryUrl": "https://github.com/S-e-cmd/app-starter-template",
     "manifestUrl": "https://raw.githubusercontent.com/S-e-cmd/app-starter-template/main/manifest.json"
   },
-  "build": "20260809-02",
+  "build": "20260818-01",
   "docs": {
     "architecture": "docs/ARCHITECTURE.md",
     "dataContract": "docs/DATA_CONTRACT.md",
