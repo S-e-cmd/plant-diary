@@ -90,6 +90,9 @@ for (const id of [
   'quickInputList',
   'logsList',
   'plansList',
+  'analysisBtn',
+  'usageBtn',
+  'trashBtn',
   'modal',
   'modalBody',
   'processing'
@@ -154,6 +157,11 @@ required(
   'all active client runtimes initialize before app bootstrap'
 );
 required(combinedClientSource, /from ['"]\.\/weather-utils\.js['"]/, 'weather runtime imports weather-utils.js');
+required(combinedClientSource, /from ['"]\.\/log-tools-ui\.js['"]/, 'log runtime imports log-tools-ui.js');
+required(combinedClientSource, /installLogToolsUi\(getState\)/, 'log runtime installs log tools UI');
+required(combinedClientSource, /action:\s*['"]getAnalysis['"]/, 'history analysis button uses getAnalysis');
+required(combinedClientSource, /action:\s*['"]restore['"]/, 'trash restore button uses restore');
+required(combinedClientSource, /renderTrashHtml\(data\.trash \|\| \[\]\)/, 'trash UI renders full-bootstrap trash data');
 required(combinedClientSource, /export\s+function\s+downloadBrowserBlob\s*\(/, 'downloadBrowserBlob remains owned by the client utility module');
 required(html, /quickInputRuntime\.buildGroups\(\)/, 'quick-input UI delegates candidate grouping to quick-input runtime');
 required(html, /quickInputRuntime\.toggleFavorite\(x\)/, 'quick-input UI delegates favorite mutation to quick-input runtime');
