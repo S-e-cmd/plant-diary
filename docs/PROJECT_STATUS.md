@@ -21,7 +21,8 @@ Worker build marker: `2026-08-19-v31`
 - Worker/GAS transport responsibilities remain split. Browser `parse / calendar / calendarBulk / bulkPlans` normalize to GAS `analyze / syncPlanCalendar / syncAllPlansCalendar / batchPlans` at the Worker boundary.
 - `skipRotation` passes through unchanged so GAS retains rotation mutation ownership.
 - GAS transport has a 25-second timeout; timeout responses use HTTP 504. Invalid GAS JSON and ordinary transport failures remain on HTTP 502 paths.
-- Historical inspection confirmed that the visible `履歴分析`, `資材・薬剤の使用履歴`, and `削除済みの記録` buttons have no bound handlers in the current page and were already unbound before the runtime extraction work. They are tracked as a pre-existing UI/functionality gap rather than an extraction regression.
+- Historical inspection confirmed that the visible `履歴分析`, `資材・薬剤の使用履歴`, and `削除済みの記録` buttons have no bound handlers in the current page and were already unbound before runtime extraction.
+- GAS already provides the required backend contracts for those buttons: `getAnalysis` returns the current-month count, plant/category rankings, usage records and pending count; full `bootstrap` returns `trash`; `restore` restores one deleted actual/plan record and returns a refreshed bootstrap. Therefore the remaining gap is UI wiring, not backend design.
 - Local handoff continues through the current parent starter `START_HERE.md`; existing application contracts and deployment architecture remain protected.
 
 ## Verification
@@ -65,7 +66,7 @@ Worker build marker: `2026-08-19-v31`
 - Rotation runtime delegation: complete and active in `index.html`.
 - Bulk-plan request delegation: complete and active in `index.html`.
 - UI rendering, DOM bindings and LocalStorage remain in `index.html`; extracted runtimes do not absorb those responsibilities.
-- Pre-existing unbound log utility buttons require a separate functionality decision before implementation; no behavior is being invented during structural cleanup.
+- The three unbound log utility buttons are now classified as UI-wiring work against existing GAS contracts: `getAnalysis`, full-bootstrap `trash`, and `restore`. No new backend behavior is required.
 - A cyclic rotation still requires GAS to generate the next cycle after the final active frame.
 - Client build remains `20260819-02` because `index.html` did not change in this pass.
 - Worker build is `2026-08-19-v31` after inline startup-loader delivery.
