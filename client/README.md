@@ -6,7 +6,8 @@
 
 - `weather-runtime.js` / `weather-utils.js` — 天気コード名、降雨・強風判定、作業リスク、天候依存予定判定、作業可能時間帯。
 - `download-utils.js` — CSV出力で使用するブラウザBlobダウンロード処理。
-- `log-date-utils.js` / `log-list-utils.js` / `log-runtime.js` — 日・週・月境界、期限判定、検索、期間抽出、並び順、ページング。`index.html` は表示だけを担当し、一覧処理はruntimeへ委譲する。
+- `log-date-utils.js` / `log-list-utils.js` / `log-runtime.js` — 日・週・月境界、期限判定、検索、期間抽出、並び順、ページング。`index.html` は一覧HTMLを担当し、データ処理はruntimeへ委譲する。
+- `log-tools-ui.js` — ログ画面の「履歴分析」「資材・薬剤の使用履歴」「削除済みの記録」を既存GAS契約へ接続するUI責務。分析は `getAnalysis`、削除済み一覧は明示的なfull `bootstrap`、復元は `restore` を使う。軽量起動データを削除済み一覧の正本として扱わない。
 - `quick-input-utils.js` / `quick-input-runtime.js` — クイック入力の同一性、テンプレート生成、お気に入り判定、最近使った内容、追加・解除。LocalStorage保存とDOM描画はUI責務として `index.html` に残す。
 - `rotation-utils.js` / `rotation-runtime.js` — ローテーション予定判定、未完了枠、実施履歴、current / next / after表示モデル、次周要否。画面HTML生成とGAS mutationは別責務のまま。
 - `plan-bulk-utils.js` — 一括操作対象IDの正規化、`YYYY-MM-DD` 実在日付検証、完了・延期・見送りのAPI payload生成。
@@ -18,14 +19,14 @@
 
 ## Runtime contracts
 
-- Log: `scripts/test-log-contract.mjs` / `scripts/test-log-runtime.mjs`
+- Log: `scripts/test-log-contract.mjs` / `scripts/test-log-runtime.mjs` / `scripts/test-log-tools-ui.mjs`
 - Quick input: `scripts/test-quick-input-utils.mjs` / `scripts/test-quick-input-runtime.mjs`
 - Rotation: `scripts/test-rotation-utils.mjs` / `scripts/test-rotation-runtime.mjs`
 - Bulk plan: `scripts/test-plan-bulk-utils.mjs`
 - Startup: `scripts/test-startup-loader.mjs` / `scripts/test-worker-contract.mjs`
 
-さらに `scripts/check-client-contract.mjs` が `index.html` のactive runtime配線を固定し、旧inline処理の再混入を検出します。
+さらに `scripts/check-client-contract.mjs` がactive runtime配線、ログ画面3ツールのGAS action、旧inline処理の再混入を検出します。
 
 ## Rule
 
-runtime境界はUI描画やGASの業務ロジックを取り込みません。DOM契約、LocalStorageキー、API payload、20件ページング、ローテーション履歴、既存表示文言を維持したまま、データ処理責務だけを分離します。
+データ処理runtimeはGAS業務ロジックや無関係なDOM責務を取り込みません。ログ画面固有のUI操作は `log-tools-ui.js` に分離し、DOM契約、LocalStorageキー、API payload、20件ページング、ローテーション履歴、既存表示文言を維持します。
