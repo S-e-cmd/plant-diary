@@ -6,8 +6,9 @@
 
 - `weather-runtime.js` / `weather-utils.js` — 天気コード名、降雨・強風判定、作業リスク、天候依存予定判定、作業可能時間帯。
 - `download-utils.js` — CSV出力で使用するブラウザBlobダウンロード処理。
+- `startup-runtime.js` / `startup-snapshot.js` — 起動時bootstrapのスナップショット先出しと、裏での最新bootstrap取得・自動画面反映。今日／入力／予定タブで同日スナップショットがある場合はGAS応答待ちを初期表示から外す。
 
-これらは `index.html` から実際に読み込まれている現行ランタイムです。
+これらは `index.html` から実際に読み込まれている現行ランタイムです。`startup-runtime.js` は現在、起動時に必ず読み込まれる `weather-runtime.js` から有効化しています。将来 `index.html` のruntime配線を整理する際は直接初期化へ移します。
 
 ## Log extraction boundary
 
