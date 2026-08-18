@@ -89,6 +89,26 @@ async function fetchAnalysis(getState) {
   }
 }
 
+function bindRestoreButtons() {
+  document.querySelectorAll('[data-restore-entry]').forEach(button => {
+    button.onclick = async () => {
+      const [type, id] = button.dataset.restoreEntry.split(':');
+      setBusy(true, '復元中…');
+      try {
+        const data = await request({ action: 'restore', type, id });
+        if (typeof globalThis.applyBootstrap === 'function') globalThis.applyBootstrap(data);
+        else document.querySelector('#syncBtn')?.click();
+        closeModal();
+        notify('復元しました');
+      } catch (error) {
+        notify(error.message);
+      } finally {
+        setBusy(false);
+      }
+    };
+  });
+}
+
 export function installLogToolsUi(getState) {
   if (installed || typeof document === 'undefined' || typeof getState !== 'function') return false;
   const analysisBtn = document.querySelector('#analysisBtn');
@@ -108,26 +128,18 @@ export function installLogToolsUi(getState) {
     if (data) openModal('資材・薬剤の使用履歴', renderUsageHtml(data));
   };
 
-  trashBtn.onclick = () => {
-    const state = getState();
-    if (!openModal('削除済みの記録', renderTrashHtml(state.trash || []))) return;
-    document.querySelectorAll('[data-restore-entry]').forEach(button => {
-      button.onclick = async () => {
-        const [type, id] = button.dataset.restoreEntry.split(':');
-        setBusy(true, '復元中…');
-        try {
-          const data = await request({ action: 'restore', type, id });
-          if (typeof globalThis.applyBootstrap === 'function') globalThis.applyBootstrap(data);
-          else document.querySelector('#syncBtn')?.click();
-          closeModal();
-          notify('復元しました');
-        } catch (error) {
-          notify(error.message);
-        } finally {
-          setBusy(false);
-        }
-      };
-    });
+  trashBtn.onclick = async () => {
+    setBusy(true, '削除済みを取得中…');
+    try {
+      const data = await request({ action: 'bootstrap' });
+      if (typeof globalThis.applyBootstrap === 'function') globalThis.applyBootstrap(data);
+      else getState().trash = data.trash || [];
+      if (openModal('削除済みの記録', renderTrashHtml(data.trash || []))) bindRestoreButtons();
+    } catch (error) {
+      notify(error.message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return true;
