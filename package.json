@@ -13,7 +13,7 @@
     "test:quick": "node scripts/test-quick-input-utils.mjs && node scripts/test-quick-input-runtime.mjs",
     "test:rotation": "node scripts/test-rotation-utils.mjs && node scripts/test-rotation-runtime.mjs",
     "test:plan-bulk": "node scripts/test-plan-bulk-utils.mjs",
-    "test:startup": "node scripts/test-startup-snapshot.mjs",
+    "test:startup": "node scripts/test-startup-snapshot.mjs && node scripts/test-startup-runtime.mjs",
     "test:weather": "node scripts/test-weather-utils.mjs && node scripts/test-weather-semantic-parity.mjs && node scripts/test-weather-runtime.mjs && node scripts/test-weather-extraction-dry-run.mjs && node scripts/test-weather-parity.mjs",
     "maintenance:apply-weather-extraction": "node scripts/apply-weather-extraction.mjs"
   },
