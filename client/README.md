@@ -28,6 +28,12 @@
 
 ローテーションの純粋処理は `scripts/test-rotation-utils.mjs` で固定しています。画面描画、実施・見送りAPI呼び出し、GAS側の次周生成はランタイム境界のため、現時点では `index.html` / GASを正本とします。
 
+## Bulk plan extraction boundary
+
+- `plan-bulk-utils.js` — 一括操作対象IDの正規化、`YYYY-MM-DD` の実在日付検証、完了・延期・見送りのAPI payload生成。
+
+`scripts/test-plan-bulk-utils.mjs` で純粋契約を固定しています。一括延期の実際のUIは `index.html` で延期日を入力し、同じpayload契約で `/api` へ送信する現行ランタイムです。Workerでも延期日を再検証するため、欠落・形式不正・実在しない日付はGASへ到達しません。
+
 ## Rule
 
 分離時は未使用moduleだけを増やさず、元の関数名・閾値・DOM契約・state構造・API payloadを維持したまま、runtime wiringと回帰確認を同じ整備フロー内で完了させます。
