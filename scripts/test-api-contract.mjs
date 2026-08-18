@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { normalizeApiBody, normalizeApiPayload } from '../worker/api-contract.js';
+import { ApiContractError, normalizeApiBody, normalizeApiPayload } from '../worker/api-contract.js';
 
 assert.deepEqual(
   normalizeApiPayload({ action: 'parse', type: 'plan', date: '2026-08-19', rawText: 'ダリア消毒' }),
@@ -26,6 +26,21 @@ assert.deepEqual(
 assert.deepEqual(
   normalizeApiPayload({ action: 'bulkPlans', ids: ['p1'], operation: 'complete' }),
   { action: 'batchPlans', ids: ['p1'], operation: 'complete', kind: 'complete' }
+);
+
+assert.deepEqual(
+  normalizeApiPayload({ action: 'bulkPlans', ids: ['p1'], operation: 'postpone', date: '2026-08-21' }),
+  { action: 'batchPlans', ids: ['p1'], operation: 'postpone', date: '2026-08-21', kind: 'postpone' }
+);
+
+assert.throws(
+  () => normalizeApiPayload({ action: 'bulkPlans', ids: ['p1'], operation: 'postpone' }),
+  error => error instanceof ApiContractError && error.message === '一括延期には延期後の日付が必要です。'
+);
+
+assert.deepEqual(
+  normalizeApiPayload({ action: 'skipRotation', id: 'p1' }),
+  { action: 'skipRotation', id: 'p1' }
 );
 
 assert.deepEqual(
