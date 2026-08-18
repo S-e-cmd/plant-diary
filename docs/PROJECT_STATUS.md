@@ -2,7 +2,7 @@
 
 Updated: 2026-08-19
 Client build marker: `20260819-01`
-Worker build marker: `2026-08-19-v28`
+Worker build marker: `2026-08-19-v29`
 
 ## Current state
 
@@ -14,7 +14,7 @@ Worker build marker: `2026-08-19-v28`
 - Rotation extraction now has a complete runtime boundary: `client/rotation-utils.js` owns rotation selection/view-model/next-cycle detection; `client/rotation-runtime.js` binds those operations to application state without owning API mutation or GAS business rules.
 - Bulk-plan request extraction is contract-backed: `client/plan-bulk-utils.js` contains selected-ID normalization, real `YYYY-MM-DD` validation, and complete/postpone/cancel payload construction.
 - Worker/GAS transport responsibilities are split and active in production code.
-- GAS transport points to the current deployed GAS Web App URL supplied on 2026-08-19.
+- GAS transport points to the optimized deployed GAS Web App URL supplied on 2026-08-19 after the startup-read reduction pass.
 - Worker API normalization is active: browser `parse / calendar / calendarBulk / bulkPlans` are converted to GAS `analyze / syncPlanCalendar / syncAllPlansCalendar / batchPlans` with the required payload field aliases.
 - `skipRotation` passes through unchanged so GAS retains rotation business-logic ownership.
 - Bulk postpone is active in browser runtime: the user is prompted for a target date before mutation; cancelling the prompt performs no request.
@@ -68,5 +68,6 @@ Worker build marker: `2026-08-19-v28`
 - A cyclic rotation is explicitly contract-tested to require a next cycle after all cyclic frames become completed/cancelled; GAS is responsible for actually creating the next-cycle rows.
 - Browser/GAS action-name drift for `parse / calendar / calendarBulk / bulkPlans` is resolved at the Worker boundary and documented in `docs/API_CONTRACT.md`.
 - `skipRotation` is not equivalent to ordinary cancellation and passes through unchanged to GAS.
+- Startup performance is now being addressed first: the current optimized GAS deployment reduces repeated Spreadsheet opens and duplicate full-sheet reads without changing the browser bootstrap response contract.
 - Client build remains `20260819-01` because the new log/quick/rotation runtime boundaries are not yet wired into `index.html`.
-- Worker build remains `2026-08-19-v28`.
+- Worker build is `2026-08-19-v29` for the optimized GAS deployment.
