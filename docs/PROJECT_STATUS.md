@@ -1,42 +1,41 @@
 # Project Status
 
 Updated: 2026-08-19
-Client build marker: `20260819-02`
+Client page marker: `20260819-02`
 Worker build marker: `2026-08-19-v31`
 
 ## Current state
 
 - Cloudflare Pages deployment with `main` as the production branch.
 - Application CSS is active in `styles.css`; `index.html` does not recreate the application stylesheet inline.
-- Startup acceleration is active in the delivered HTML path. `_worker.js` reads `client/startup-loader.js` from static assets and inlines it before the existing application script, removing the extra browser request that the previous external-script injection required.
-- Startup acceleration applies only to the first bootstrap request in a page session. Today / Input / Plans may use a same-day snapshot or `bootstrapCore` for the first display, then refresh full data in the background.
-- Logs bypasses partial startup data and performs a full bootstrap immediately. Any later manual Sync request also bypasses the startup shortcut and performs a full bootstrap.
-- `startup-loader.js` is the only startup fetch wrapper. The superseded `startup-runtime.js` / `startup-snapshot.js` path remains removed, preventing double wrapping and duplicate refresh requests.
+- Startup acceleration is active in the delivered HTML path. `_worker.js` reads `client/startup-loader.js` from static assets and inlines it before the existing application script, removing an extra browser request.
+- Startup acceleration applies only to the first bootstrap request in a page session. Today / Input / Plans may use a same-day snapshot or `bootstrapCore` for first display, then refresh full data in the background.
+- Logs bypasses partial startup data and performs a full bootstrap immediately. Later manual Sync requests also perform full bootstrap.
+- `startup-loader.js` is the only startup fetch wrapper. The superseded duplicate startup path remains removed.
 - The current GAS deployment supports `bootstrapCore` and full `bootstrap`; Worker transport points to the two-stage GAS deployment supplied on 2026-08-19.
 - Weather decision helpers and browser-download mechanics remain active external client modules.
-- Log processing is active runtime code: `log-date-utils.js` / `log-list-utils.js` own pure operations and `log-runtime.js` owns state-bound range, timing, filtering, sorting and pagination. `index.html` delegates its log list processing to this runtime.
-- Quick-input processing is active runtime code: `quick-input-utils.js` / `quick-input-runtime.js` own identity, template generation, favorite matching, recent candidate grouping and favorite mutation. `index.html` retains DOM rendering, LocalStorage persistence and input-screen navigation.
-- Rotation processing is active runtime code: `rotation-utils.js` / `rotation-runtime.js` own rotation detection and current / next / after display-model selection with execution-history count. `index.html` retains rendering and API interaction.
-- Bulk-plan request construction is active runtime code: `plan-bulk-utils.js` validates selected IDs and real `YYYY-MM-DD` dates and builds complete / postpone / cancel payloads. Browser UI still collects the date; Worker independently validates postpone dates again.
+- Log processing is active runtime code: `log-date-utils.js` / `log-list-utils.js` own pure operations and `log-runtime.js` owns state-bound range, timing, filtering, sorting and pagination.
+- Log utility UI is now active through `log-tools-ui.js`, installed by the already-active `log-runtime` initialization. `履歴分析` uses GAS `getAnalysis`; `資材・薬剤の使用履歴` renders the `usage` portion of that analysis; `削除済みの記録` explicitly requests a full `bootstrap` before rendering `trash`; each restore action uses GAS `restore` and applies the returned refreshed bootstrap.
+- Quick-input processing is active runtime code through `quick-input-utils.js` / `quick-input-runtime.js`.
+- Rotation processing is active runtime code through `rotation-utils.js` / `rotation-runtime.js`.
+- Bulk-plan request construction is active runtime code through `plan-bulk-utils.js`; Worker independently validates postpone dates again.
 - Worker/GAS transport responsibilities remain split. Browser `parse / calendar / calendarBulk / bulkPlans` normalize to GAS `analyze / syncPlanCalendar / syncAllPlansCalendar / batchPlans` at the Worker boundary.
 - `skipRotation` passes through unchanged so GAS retains rotation mutation ownership.
-- GAS transport has a 25-second timeout; timeout responses use HTTP 504. Invalid GAS JSON and ordinary transport failures remain on HTTP 502 paths.
-- Historical inspection confirmed that the visible `履歴分析`, `資材・薬剤の使用履歴`, and `削除済みの記録` buttons have no bound handlers in the current page and were already unbound before runtime extraction.
-- GAS already provides the required backend contracts for those buttons: `getAnalysis` returns the current-month count, plant/category rankings, usage records and pending count; full `bootstrap` returns `trash`; `restore` restores one deleted actual/plan record and returns a refreshed bootstrap. Therefore the remaining gap is UI wiring, not backend design.
+- GAS transport has a 25-second timeout; timeout responses use HTTP 504. Invalid GAS JSON and ordinary transport failures remain HTTP 502.
 - Local handoff continues through the current parent starter `START_HERE.md`; existing application contracts and deployment architecture remain protected.
 
 ## Verification
 
-- `scripts/check-client-contract.mjs` syntax-checks inline/client JavaScript, protects CSS, DOM, LocalStorage and `/api` contracts, requires active imports of weather/download/log/quick/rotation/bulk-plan modules, and verifies the page delegates log grouping/pagination, quick-input grouping/favorite mutation, rotation view-model selection and bulk payload creation to the external runtimes.
-- The same client contract rejects recreation of the former quick-input grouping, log filtering/pagination and rotation selection logic inline.
-- `scripts/test-startup-loader.mjs` verifies that supported first startup uses `bootstrapCore` when needed, full bootstrap refresh runs in the background, later bootstrap calls remain full, and Logs starts with full bootstrap rather than partial data.
-- `scripts/test-worker-contract.mjs` verifies that the Worker inlines the startup loader before the application script and removes the stale content-length header from the rewritten HTML response.
-- `scripts/test-log-contract.mjs` / `scripts/test-log-runtime.mjs` cover daily/weekly/monthly ranges, overdue/today/future timing, search and special filters, period filtering, sorting and 20-item pagination.
-- `scripts/test-quick-input-utils.mjs` / `scripts/test-quick-input-runtime.mjs` cover identity order, template defaults, favorite matching/mutation, duplicate suppression, newest-first ordering and result limits.
-- `scripts/test-rotation-utils.mjs` / `scripts/test-rotation-runtime.mjs` cover rotation detection, active-frame selection, current/next/after model, execution-history count and cyclic next-cycle requirement.
-- `scripts/test-plan-bulk-utils.mjs` covers ID normalization, real calendar-date validation and complete/postpone/cancel payloads.
-- `scripts/test-api-contract.mjs` and `scripts/test-worker-contract.mjs` protect browser-to-GAS normalization and fail-closed postpone-date behavior.
-- Focused startup / log / quick-input / rotation / plan-bulk / API-contract checks remain in the normal `npm test` sequence. GitHub Actions are not required.
+- `scripts/check-client-contract.mjs` syntax-checks inline/client JavaScript, protects CSS, DOM, LocalStorage and `/api` contracts, requires active runtime imports/delegation, and now requires the three log utility buttons to remain present and connected through `log-tools-ui.js` to `getAnalysis`, full-bootstrap trash data and `restore`.
+- `scripts/test-log-tools-ui.mjs` verifies analysis, usage and deleted-record rendering contracts, including the restore control identifier.
+- `scripts/test-startup-loader.mjs` verifies supported first startup, background full refresh, later full bootstrap calls and Logs full-data startup.
+- `scripts/test-worker-contract.mjs` verifies startup-loader delivery and Worker transport contracts.
+- `scripts/test-log-contract.mjs` / `scripts/test-log-runtime.mjs` cover log range/timing/search/filter/sort/pagination behavior.
+- `scripts/test-quick-input-utils.mjs` / `scripts/test-quick-input-runtime.mjs` cover quick-input behavior.
+- `scripts/test-rotation-utils.mjs` / `scripts/test-rotation-runtime.mjs` cover rotation selection/history/next-cycle behavior.
+- `scripts/test-plan-bulk-utils.mjs` covers bulk request construction and date validation.
+- `scripts/test-api-contract.mjs` / `scripts/test-worker-contract.mjs` protect browser-to-GAS normalization and fail-closed postpone behavior.
+- Focused startup / log / quick-input / rotation / plan-bulk / API-contract checks remain in normal `npm test`. GitHub Actions are not required.
 
 ## Protected contracts
 
@@ -50,23 +49,21 @@ Worker build marker: `2026-08-19-v31`
 - cyclic rotation history remains append-only across cycles;
 - `skipRotation` is not equivalent to ordinary cancellation;
 - bulk postpone requires a caller-supplied real `YYYY-MM-DD` date; no layer invents a date;
-- runtime modules own data processing only, not unrelated DOM rendering or GAS business logic;
 - startup snapshots are same-day only and are not used as complete Logs data;
 - startup acceleration applies only to the initial bootstrap in a page session; manual Sync remains a full refresh;
-- startup loader injection occurs before the existing inline application script;
+- deleted-record UI must use full bootstrap data rather than the partial startup snapshot;
+- log analysis/usage UI must consume the existing `getAnalysis` response rather than recompute a conflicting analysis in the browser;
 - active stylesheet boundary remains `styles.css`;
 - Cloudflare Pages deployment remains from `main`.
 
 ## Current maintenance decision
 
-- Startup performance: two-stage startup active, additional startup-loader browser request removed, Logs/manual Sync kept full-data.
+- Startup performance: two-stage startup active; Logs/manual Sync kept full-data.
 - CSS responsibility extraction: complete and active.
-- Log runtime delegation: complete and active in `index.html`.
-- Quick-input runtime delegation: complete and active in `index.html`.
-- Rotation runtime delegation: complete and active in `index.html`.
-- Bulk-plan request delegation: complete and active in `index.html`.
-- UI rendering, DOM bindings and LocalStorage remain in `index.html`; extracted runtimes do not absorb those responsibilities.
-- The three unbound log utility buttons are now classified as UI-wiring work against existing GAS contracts: `getAnalysis`, full-bootstrap `trash`, and `restore`. No new backend behavior is required.
-- A cyclic rotation still requires GAS to generate the next cycle after the final active frame.
-- Client build remains `20260819-02` because `index.html` did not change in this pass.
-- Worker build is `2026-08-19-v31` after inline startup-loader delivery.
+- Log runtime delegation: complete and active.
+- Log utility buttons: wired and active through `log-tools-ui.js` against existing GAS contracts.
+- Quick-input runtime delegation: complete and active.
+- Rotation runtime delegation: complete and active.
+- Bulk-plan request delegation: complete and active.
+- The client page marker remains `20260819-02` because persisted `index.html` itself was not rewritten in this pass; the next safe source edit of `index.html` must roll it forward to reflect accumulated external-runtime changes.
+- Worker build remains `2026-08-19-v31`.
