@@ -1,7 +1,4 @@
 import * as weather from './weather-utils.js';
-import { installStartupRuntime } from './startup-runtime.js';
-
-installStartupRuntime();
 
 export function createWeatherRuntime(getState){
   const currentState=()=>getState();
