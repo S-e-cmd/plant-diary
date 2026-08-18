@@ -35,6 +35,35 @@ try {
     assert.equal(await response.text(), 'asset');
   });
 
+  await run('HTML response inlines startup loader before application script', async () => {
+    const assetCalls = [];
+    const env = {
+      ASSETS: {
+        fetch: async req => {
+          const url = new URL(req.url);
+          assetCalls.push(url.pathname);
+          if (url.pathname === '/client/startup-loader.js') {
+            return new Response('globalThis.__startupLoaderLoaded=true;', {
+              status: 200,
+              headers: { 'Content-Type': 'application/javascript' }
+            });
+          }
+          return new Response('<!doctype html><script>globalThis.__appLoaded=true;</script>', {
+            status: 200,
+            headers: { 'Content-Type': 'text/html', 'Content-Length': '60' }
+          });
+        }
+      }
+    };
+
+    const response = await worker.fetch(request('/'), env);
+    const html = await response.text();
+    assert.deepEqual(assetCalls, ['/', '/client/startup-loader.js']);
+    assert.match(html, /<script data-startup-loader>\nglobalThis\.__startupLoaderLoaded=true;\n<\/script>\n<script>/);
+    assert.equal(response.headers.get('content-length'), null);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+  });
+
   await run('OPTIONS /api returns 204 without upstream fetch', async () => {
     globalThis.fetch = async () => {
       throw new Error('upstream should not be called');
