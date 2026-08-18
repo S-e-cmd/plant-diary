@@ -6,7 +6,7 @@
     "test": "npm run test:handoff && npm run test:worker && npm run test:api && npm run test:client && npm run test:download && npm run test:log && npm run test:quick && npm run test:rotation && npm run test:plan-bulk && npm run test:startup && npm run test:weather",
     "test:handoff": "node scripts/check-handoff-contract.mjs",
     "test:worker": "node scripts/test-worker-contract.mjs",
-    "test:api": "node scripts/test-api-contract.mjs",
+    "test:api": "node scripts/test-api-contract.mjs && node scripts/test-api-client.mjs",
     "test:client": "node scripts/check-client-contract.mjs",
     "test:download": "node scripts/test-download-utils.mjs",
     "test:log": "node scripts/test-log-contract.mjs && node scripts/test-log-runtime.mjs && node scripts/test-log-tools-ui.mjs",
