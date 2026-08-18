@@ -8,8 +8,10 @@ import vm from 'node:vm';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const rootDir = dirname(scriptDir);
 const indexPath = join(rootDir, 'index.html');
+const stylesheetPath = join(rootDir, 'styles.css');
 const clientDir = join(rootDir, 'client');
 const html = await readFile(indexPath, 'utf8');
+const stylesheet = await readFile(stylesheetPath, 'utf8');
 
 function ok(name) {
   console.log(`ok - ${name}`);
@@ -31,6 +33,14 @@ async function readClientFiles() {
     throw error;
   }
 }
+
+required(html, /<link\s+rel=["']stylesheet["']\s+href=["']\.\/styles\.css["']\s*\/?>/i, 'external stylesheet is loaded by index.html');
+assert.doesNotMatch(html, /<style(?:\s[^>]*)?>[\s\S]*?<\/style>/i, 'index.html must not recreate application stylesheet inline');
+ok('index.html does not recreate application stylesheet inline');
+for (const selector of [':root', '.app', '.rotation-card', '.log-card', '.forecast-strip']) {
+  assert.ok(stylesheet.includes(selector), `styles.css is missing required selector ${selector}`);
+}
+ok('styles.css contains representative application selectors');
 
 const inlineScripts = [...html.matchAll(/<script(?![^>]*\bsrc=)(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
   .map((match, index) => ({ name: `index.html:inline-script-${index + 1}.js`, source: match[1] }))
