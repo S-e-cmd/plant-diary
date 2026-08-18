@@ -1,3 +1,5 @@
+export class ApiContractError extends Error {}
+
 export function normalizeApiPayload(payload) {
   const req = payload && typeof payload === 'object' ? { ...payload } : {};
 
@@ -19,10 +21,14 @@ export function normalizeApiPayload(payload) {
   }
 
   if (req.action === 'bulkPlans') {
+    const kind = req.operation ?? req.kind ?? '';
+    if (kind === 'postpone' && !req.date) {
+      throw new ApiContractError('一括延期には延期後の日付が必要です。');
+    }
     return {
       ...req,
       action: 'batchPlans',
-      kind: req.operation ?? req.kind ?? ''
+      kind
     };
   }
 
