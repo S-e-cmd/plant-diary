@@ -17,6 +17,10 @@ const TYPE_REQUIRED_ACTIONS = new Set(['update', 'delete', 'restore']);
 const RECORD_TYPES = new Set(['actual', 'plan']);
 const BULK_PLAN_OPERATIONS = new Set(['complete', 'postpone', 'cancel']);
 
+function isNonEmptyObject_(value) {
+  return !!(value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length);
+}
+
 function requireId_(req) {
   if (!ID_REQUIRED_ACTIONS.has(req.action)) return;
   if (!String(req.id || '').trim()) {
@@ -33,9 +37,36 @@ function requireRecordType_(req) {
 
 function requireUpdatePatch_(req) {
   if (req.action !== 'update') return;
-  const patch = req.patch;
-  if (!patch || typeof patch !== 'object' || Array.isArray(patch) || Object.keys(patch).length === 0) {
+  if (!isNonEmptyObject_(req.patch)) {
     throw new ApiContractError('updateには空でないpatchオブジェクトが必要です。');
+  }
+}
+
+function requireEntryList_(req) {
+  if (req.action !== 'save' && req.action !== 'checkDuplicates') return;
+  if (!Array.isArray(req.entries)) {
+    throw new ApiContractError(`${req.action}にはentries配列が必要です。`);
+  }
+  if (!req.entries.length) {
+    throw new ApiContractError(`${req.action}には1件以上のentryが必要です。`);
+  }
+  for (const entry of req.entries) {
+    if (!isNonEmptyObject_(entry)) {
+      throw new ApiContractError(`${req.action}の各entryは空でないオブジェクトで指定してください。`);
+    }
+    if (!RECORD_TYPES.has(String(entry.type || '').trim())) {
+      throw new ApiContractError(`${req.action}の各entry.typeはactualまたはplanで指定してください。`);
+    }
+    if (!String(entry.action || '').trim()) {
+      throw new ApiContractError(`${req.action}の各entryには作業内容が必要です。`);
+    }
+  }
+}
+
+function requireCompletePlanEntry_(req) {
+  if (req.action !== 'completePlan') return;
+  if (!isNonEmptyObject_(req.entry)) {
+    throw new ApiContractError('completePlanには空でないentryオブジェクトが必要です。');
   }
 }
 
@@ -55,6 +86,8 @@ export function normalizeApiPayload(payload) {
   requireId_(req);
   requireRecordType_(req);
   requireUpdatePatch_(req);
+  requireEntryList_(req);
+  requireCompletePlanEntry_(req);
 
   if (req.action === 'parse') {
     return {
