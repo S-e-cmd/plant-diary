@@ -66,12 +66,14 @@ export function rotationViewModel(plans, actuals, minimumTotal = 12, options = {
   if (!candidateName) return null;
 
   const season = options.seasons?.[candidateName] || rotationSeasonFromPlans(plans, candidateName) || {};
+  const seasonCapable = (plans || []).some(item => isRotationPlan(item) && item.rotationName === candidateName && item.rotationSeasonCapable === true);
   if (!activeName && shouldOfferSeasonStart(season, today)) {
     return {
       mode: 'start',
       rotationName: candidateName,
       startMonthDay: normalizeMonthDay(season.startMonthDay),
-      endedYear: Number(season.year ?? season.endedYear) || 0
+      endedYear: Number(season.year ?? season.endedYear) || 0,
+      seasonCapable
     };
   }
 
@@ -98,7 +100,8 @@ export function rotationViewModel(plans, actuals, minimumTotal = 12, options = {
     done: rotationActuals(actuals, candidateName).length,
     rows: items.slice(0, total),
     rotationName: candidateName,
-    startMonthDay: normalizeMonthDay(season.startMonthDay)
+    startMonthDay: normalizeMonthDay(season.startMonthDay),
+    seasonCapable
   };
 }
 
