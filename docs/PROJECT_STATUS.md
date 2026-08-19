@@ -2,7 +2,7 @@
 
 Updated: 2026-08-19
 Client page marker: `20260819-02`
-Worker build marker: `2026-08-19-v34`
+Worker build marker: `2026-08-19-v35`
 
 ## Current state
 
@@ -25,7 +25,8 @@ Worker build marker: `2026-08-19-v34`
 - Bulk-plan request construction is active runtime code through `plan-bulk-utils.js`; Worker rejects invalid postpone dates before GAS mutation.
 - Single-plan `postponePlan` uses the same Worker-side real-calendar validation as bulk postpone. Impossible or malformed dates are rejected before GAS mutation instead of being passed through from the browser prompt.
 - Client and Worker share one real-calendar `YYYY-MM-DD` validator in `shared/iso-date.js`. `client/plan-bulk-utils.js` and `worker/api-contract.js` both import that module, preventing browser/Worker validity drift.
-- Worker now rejects missing or whitespace-only record IDs before GAS mutation for `update`, `delete`, `restore`, `postponePlan`, `cancelPlan`, `calendar` / `syncPlanCalendar`, `completePlan`, and `skipRotation`. Non-record actions such as bootstrap, analysis, save, settings, and bulk calendar remain unaffected.
+- Worker rejects missing or whitespace-only record IDs before GAS mutation for `update`, `delete`, `restore`, `postponePlan`, `cancelPlan`, `calendar` / `syncPlanCalendar`, `completePlan`, and `skipRotation`.
+- Worker now also rejects invalid record types for `update`, `delete`, and `restore`. Their `type` must be exactly `actual` or `plan`; missing, blank, mixed-case, or unrelated values fail before GAS.
 - Worker/GAS transport responsibilities remain split. Browser `parse / calendar / calendarBulk / bulkPlans` normalize to GAS `analyze / syncPlanCalendar / syncAllPlansCalendar / batchPlans` at the Worker boundary.
 - `skipRotation` passes through unchanged after ID validation so GAS retains rotation mutation ownership.
 - GAS transport has a 25-second timeout; timeout responses use HTTP 504. Invalid GAS JSON and ordinary transport failures remain HTTP 502.
@@ -38,7 +39,7 @@ Worker build marker: `2026-08-19-v34`
 - `scripts/test-api-client.mjs` covers browser same-origin API success, API error and non-JSON response behavior.
 - `scripts/test-iso-date.mjs` covers valid dates, leap day, impossible month-end dates, invalid month values and strict zero-padded format.
 - `scripts/check-shared-contract.mjs` requires client bulk-plan validation and Worker API validation to import `shared/iso-date.js` and rejects reintroduction of local date validation.
-- `scripts/test-api-contract.mjs` covers single-plan and bulk postpone fail-closed validation and now also verifies missing/blank ID rejection across record mutations while preserving valid `update`, `restore`, `completePlan`, and `skipRotation` payloads.
+- `scripts/test-api-contract.mjs` covers single-plan and bulk postpone fail-closed validation, missing/blank ID rejection across record mutations, and invalid `type` rejection for `update`, `delete`, and `restore`, while preserving valid `actual` / `plan` payloads.
 - `scripts/test-log-tools-ui.mjs` verifies analysis, usage and deleted-record rendering contracts, including the restore control identifier.
 - `scripts/test-startup-loader.mjs` verifies supported first startup, `startup-core` forecast markers for Core and legacy empty-forecast snapshots, deferred background full refresh, later full bootstrap calls, Logs full-data startup, and background forecast handoff.
 - `scripts/test-weather-runtime.mjs` verifies background full-bootstrap `weather / forecasts / forecastHourly` are applied to current application state rather than a stale startup snapshot.
@@ -62,6 +63,7 @@ Worker build marker: `2026-08-19-v34`
 - `skipRotation` is not equivalent to ordinary cancellation;
 - single and bulk postpone require caller-supplied real `YYYY-MM-DD` dates; Worker uses the shared validator and no layer invents a date;
 - record-scoped mutations require a non-empty target ID and fail before GAS when the ID is absent or whitespace-only;
+- `update`, `delete`, and `restore` require `type` to be exactly `actual` or `plan` and fail before GAS otherwise;
 - startup snapshots are same-day only and are not used as complete Logs data;
 - startup acceleration applies only to the initial bootstrap in a page session; manual Sync remains a full refresh;
 - accelerated Core/snapshot startup may use only a temporary `startup-core` forecast marker to avoid blocking first paint; full bootstrap remains the authoritative forecast source;
@@ -77,7 +79,8 @@ Worker build marker: `2026-08-19-v34`
 - Browser API request duplication: external UI modules use `client/api-client.js` as the shared request boundary.
 - Client/Worker date validation duplication: removed; `shared/iso-date.js` is the single contract for real `YYYY-MM-DD` validation.
 - Single-plan postpone validation: fail-closed at the Worker boundary, matching bulk postpone semantics.
-- Record ID validation: record-scoped mutations now fail closed at the Worker boundary before GAS when the target ID is absent or blank.
+- Record ID validation: record-scoped mutations fail closed at the Worker boundary before GAS when the target ID is absent or blank.
+- Record type validation: `update`, `delete`, and `restore` fail closed unless `type` is exactly `actual` or `plan`.
 - CSS responsibility extraction: complete and active.
 - Log runtime delegation: complete and active.
 - Log utility buttons: wired and active through `log-tools-ui.js` against existing GAS contracts.
@@ -86,4 +89,4 @@ Worker build marker: `2026-08-19-v34`
 - Bulk-plan request delegation: complete and active.
 - Today outlook render order: concrete source defect identified; direct `index.html` fix remains pending rather than hidden in Worker/runtime injection.
 - The client page marker remains `20260819-02` because persisted `index.html` itself was not rewritten in this pass; the next safe source edit of `index.html` must roll it forward to reflect accumulated external-runtime changes.
-- Worker build is `2026-08-19-v34` after adding fail-closed record ID validation.
+- Worker build is `2026-08-19-v35` after adding fail-closed record type validation.
