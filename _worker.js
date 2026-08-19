@@ -1,7 +1,7 @@
 import { GasResponseError, GasTimeoutError, fetchGas, parseGasJson } from './worker/gas-transport.js';
 import { ApiContractError, normalizeApiBody } from './worker/api-contract.js';
 
-const API_PATH = '/api'; // build: 2026-08-19-v42
+const API_PATH = '/api'; // build: 2026-08-19-v43
 const API_METHOD = 'POST';
 const STARTUP_SCRIPT_PATH = '/client/startup-loader.js';
 
@@ -39,10 +39,10 @@ async function serveAsset_(request, env, pathname) {
   const headers = new Headers(response.headers);
   headers.delete('content-length');
   headers.set('cache-control', 'no-store');
-  return new Response(html.replace(marker, `${startupScript}\n${marker}`), {
+  return new Response(html.replace(marker, `${startupScript}\n${marker}`, {
     status: response.status,
     headers
-  });
+  }));
 }
 
 function requestAction_(body) {
