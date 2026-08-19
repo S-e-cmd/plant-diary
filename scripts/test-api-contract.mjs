@@ -45,6 +45,18 @@ assert.deepEqual(
   { action: 'batchPlans', ids: ['p1'], operation: 'postpone', date: '2026-08-21', kind: 'postpone' }
 );
 
+assert.deepEqual(
+  normalizeApiPayload({ action: 'bulkPlans', ids: ['p1'], kind: 'cancel' }),
+  { action: 'batchPlans', ids: ['p1'], kind: 'cancel' }
+);
+
+for (const operation of [undefined, '', ' ', 'finish', 'delete', 'Complete']) {
+  assert.throws(
+    () => normalizeApiPayload({ action: 'bulkPlans', ids: ['p1'], operation }),
+    error => error instanceof ApiContractError && error.message === '一括操作はcomplete、postpone、cancelのいずれかを指定してください。'
+  );
+}
+
 for (const date of [undefined, '', '2026-8-21', '2026-02-29']) {
   assert.throws(
     () => normalizeApiPayload({ action: 'bulkPlans', ids: ['p1'], operation: 'postpone', date }),
@@ -55,7 +67,7 @@ for (const date of [undefined, '', '2026-8-21', '2026-02-29']) {
 for (const action of ['update', 'delete', 'restore', 'postponePlan', 'cancelPlan', 'calendar', 'syncPlanCalendar', 'completePlan', 'skipRotation']) {
   for (const id of [undefined, '', '   ']) {
     assert.throws(
-      () => normalizeApiPayload({ action, id, type: ['update', 'delete', 'restore'].includes(action) ? 'actual' : undefined, date: action === 'postponePlan' ? '2026-08-21' : undefined }),
+      () => normalizeApiPayload({ action, id, type: ['update', 'delete', 'restore'].includes(action) ? 'actual' : undefined, patch: action === 'update' ? { action: '水やり' } : undefined, date: action === 'postponePlan' ? '2026-08-21' : undefined }),
       error => error instanceof ApiContractError && error.message === `${action}には対象IDが必要です。`
     );
   }
@@ -68,6 +80,13 @@ for (const action of ['update', 'delete', 'restore']) {
       error => error instanceof ApiContractError && error.message === `${action}のtypeはactualまたはplanで指定してください。`
     );
   }
+}
+
+for (const patch of [undefined, null, '', '水やり', [], {}, 0, false]) {
+  assert.throws(
+    () => normalizeApiPayload({ action: 'update', type: 'actual', id: 'a1', patch }),
+    error => error instanceof ApiContractError && error.message === 'updateには空でないpatchオブジェクトが必要です。'
+  );
 }
 
 assert.deepEqual(
