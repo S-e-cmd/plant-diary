@@ -2,8 +2,28 @@ import { isValidIsoDate } from '../shared/iso-date.js';
 
 export class ApiContractError extends Error {}
 
+const ID_REQUIRED_ACTIONS = new Set([
+  'update',
+  'delete',
+  'restore',
+  'postponePlan',
+  'cancelPlan',
+  'calendar',
+  'syncPlanCalendar',
+  'completePlan',
+  'skipRotation'
+]);
+
+function requireId_(req) {
+  if (!ID_REQUIRED_ACTIONS.has(req.action)) return;
+  if (!String(req.id || '').trim()) {
+    throw new ApiContractError(`${req.action}には対象IDが必要です。`);
+  }
+}
+
 export function normalizeApiPayload(payload) {
   const req = payload && typeof payload === 'object' ? { ...payload } : {};
+  requireId_(req);
 
   if (req.action === 'parse') {
     return {
@@ -22,11 +42,8 @@ export function normalizeApiPayload(payload) {
     return { action: 'syncAllPlansCalendar' };
   }
 
-  if (req.action === 'postponePlan') {
-    if (!isValidIsoDate(req.date)) {
-      throw new ApiContractError('延期後の日付には有効なYYYY-MM-DDが必要です。');
-    }
-    return req;
+  if (req.action === 'postponePlan' && !isValidIsoDate(req.date)) {
+    throw new ApiContractError('延期には有効な延期後の日付（YYYY-MM-DD）が必要です。');
   }
 
   if (req.action === 'bulkPlans') {
