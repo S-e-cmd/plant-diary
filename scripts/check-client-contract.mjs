@@ -105,6 +105,7 @@ for (const name of [
   'renderWorkWindows',
   'applyBootstrap',
   'renderActiveTab',
+  'renderTodayTab',
   'renderQuickInputs',
   'renderLogs',
   'renderPlans',
@@ -129,6 +130,23 @@ required(
 );
 required(combinedClientSource, /action:'bootstrap'/, 'bootstrap API action remains present');
 required(combinedClientSource, /applyBootstrap\(d\)/, 'bootstrap response application remains present');
+required(
+  html,
+  /function renderTodayTab\(\)\{renderToday\(\);renderOutlook\(\)\}/,
+  'Today tab renders base content before outlook insertion'
+);
+required(
+  html,
+  /if\(tab==='today'\)\{renderTodayTab\(\)\}/,
+  'active Today tab delegates full redraw to renderTodayTab'
+);
+required(
+  html,
+  /#outlookDays['"]\)\.onchange=e=>\{state\.outlookDays=Number\(e\.target\.value\);syncAppSettings\(\);renderTodayTab\(\)\}/,
+  'outlook range changes preserve the outlook card after redraw'
+);
+assert.doesNotMatch(html, /renderOutlook\(\);renderToday\(\)/, 'outlook must not render before renderToday clears todayList');
+ok('Today outlook render order cannot regress to outlook-before-base rendering');
 required(
   html,
   /if\(action==='postpone'\)\{date=prompt\('延期後の日付（YYYY-MM-DD）'\);if\(!date\)return\}/,
