@@ -36,11 +36,11 @@ for (const payload of [
 
 assert.deepEqual(
   normalizeApiPayload({ action: 'endRotationSeason', rotationName: ' ダリア用ローテーション ' }),
-  { action: 'endRotationSeason', rotationName: 'ダリア用ローテーション', startMonthDay: '07-01' }
+  { action: 'endRotationSeason', rotationName: 'ダリア用ローテーション', startMonthDay: '06-15' }
 );
 assert.deepEqual(
-  normalizeApiPayload({ action: 'endRotationSeason', rotationName: 'ダリア用ローテーション', startMonthDay: '07-15' }),
-  { action: 'endRotationSeason', rotationName: 'ダリア用ローテーション', startMonthDay: '07-15' }
+  normalizeApiPayload({ action: 'endRotationSeason', rotationName: 'ダリア用ローテーション', startMonthDay: '06-20' }),
+  { action: 'endRotationSeason', rotationName: 'ダリア用ローテーション', startMonthDay: '06-20' }
 );
 assert.deepEqual(
   normalizeApiPayload({ action: 'startRotationSeason', rotationName: ' ダリア用ローテーション ' }),
@@ -52,7 +52,7 @@ for (const action of ['endRotationSeason', 'startRotationSeason']) {
     error => error instanceof ApiContractError && error.message === `${action}にはrotationNameが必要です。`
   );
 }
-for (const startMonthDay of ['7-01', '13-01', '02-30']) {
+for (const startMonthDay of ['6-15', '13-01', '02-30']) {
   assert.throws(
     () => normalizeApiPayload({ action: 'endRotationSeason', rotationName: 'ダリア用ローテーション', startMonthDay }),
     error => error instanceof ApiContractError
