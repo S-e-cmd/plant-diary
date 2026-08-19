@@ -2,7 +2,7 @@
 
 Updated: 2026-08-19
 Client page marker: `20260819-02`
-Worker build marker: `2026-08-19-v32`
+Worker build marker: `2026-08-19-v33`
 
 ## Current state
 
@@ -22,8 +22,9 @@ Worker build marker: `2026-08-19-v32`
 - Log utility UI is active through `log-tools-ui.js`, installed by the already-active `log-runtime` initialization. `履歴分析` uses GAS `getAnalysis`; `資材・薬剤の使用履歴` renders the `usage` portion of that analysis; `削除済みの記録` explicitly requests a full `bootstrap` before rendering `trash`; each restore action uses GAS `restore` and applies the returned refreshed bootstrap.
 - Quick-input processing is active runtime code through `quick-input-utils.js` / `quick-input-runtime.js`.
 - Rotation processing is active runtime code through `rotation-utils.js` / `rotation-runtime.js`.
-- Bulk-plan request construction is active runtime code through `plan-bulk-utils.js`; Worker independently rejects invalid postpone dates before GAS mutation.
-- Client and Worker now share one real-calendar `YYYY-MM-DD` validator in `shared/iso-date.js`. `client/plan-bulk-utils.js` and `worker/api-contract.js` both import that module, removing the previous duplicate date-regex / `Date.UTC` implementations and preventing browser/Worker validity drift.
+- Bulk-plan request construction is active runtime code through `plan-bulk-utils.js`; Worker rejects invalid postpone dates before GAS mutation.
+- Single-plan `postponePlan` now uses the same Worker-side real-calendar validation as bulk postpone. Impossible or malformed dates are rejected before GAS mutation instead of being passed through from the browser prompt.
+- Client and Worker share one real-calendar `YYYY-MM-DD` validator in `shared/iso-date.js`. `client/plan-bulk-utils.js` and `worker/api-contract.js` both import that module, preventing browser/Worker validity drift.
 - Worker/GAS transport responsibilities remain split. Browser `parse / calendar / calendarBulk / bulkPlans` normalize to GAS `analyze / syncPlanCalendar / syncAllPlansCalendar / batchPlans` at the Worker boundary.
 - `skipRotation` passes through unchanged so GAS retains rotation mutation ownership.
 - GAS transport has a 25-second timeout; timeout responses use HTTP 504. Invalid GAS JSON and ordinary transport failures remain HTTP 502.
@@ -35,7 +36,8 @@ Worker build marker: `2026-08-19-v32`
 - `scripts/check-client-contract.mjs` syntax-checks inline/client JavaScript, protects CSS, DOM, LocalStorage and `/api` contracts, requires active runtime imports/delegation, and requires the three log utility buttons to remain connected through `log-tools-ui.js` to `getAnalysis`, full-bootstrap trash data and `restore`.
 - `scripts/test-api-client.mjs` covers browser same-origin API success, API error and non-JSON response behavior.
 - `scripts/test-iso-date.mjs` covers valid dates, leap day, impossible month-end dates, invalid month values and strict zero-padded format.
-- `scripts/check-shared-contract.mjs` requires both bulk-plan client validation and Worker API validation to import `shared/iso-date.js` and rejects reintroduction of local `Date.UTC` / ISO regex validation in either layer.
+- `scripts/check-shared-contract.mjs` requires client bulk-plan validation and Worker API validation to import `shared/iso-date.js` and rejects reintroduction of local date validation.
+- `scripts/test-api-contract.mjs` now covers both single-plan and bulk postpone fail-closed validation, including malformed and impossible dates.
 - `scripts/test-log-tools-ui.mjs` verifies analysis, usage and deleted-record rendering contracts, including the restore control identifier.
 - `scripts/test-startup-loader.mjs` verifies supported first startup, `startup-core` forecast markers for Core and legacy empty-forecast snapshots, deferred background full refresh, later full bootstrap calls, Logs full-data startup, and background forecast handoff.
 - `scripts/test-weather-runtime.mjs` verifies background full-bootstrap `weather / forecasts / forecastHourly` are applied to current application state rather than a stale startup snapshot.
@@ -44,7 +46,6 @@ Worker build marker: `2026-08-19-v32`
 - `scripts/test-quick-input-utils.mjs` / `scripts/test-quick-input-runtime.mjs` cover quick-input behavior.
 - `scripts/test-rotation-utils.mjs` / `scripts/test-rotation-runtime.mjs` cover rotation selection/history/next-cycle behavior.
 - `scripts/test-plan-bulk-utils.mjs` covers bulk request construction and date validation through the shared date contract.
-- `scripts/test-api-contract.mjs` / `scripts/test-worker-contract.mjs` protect browser-to-GAS normalization and fail-closed postpone behavior.
 - Focused startup / log / quick-input / rotation / plan-bulk / API-contract checks remain in normal `npm test`. GitHub Actions are not required.
 
 ## Protected contracts
@@ -58,7 +59,7 @@ Worker build marker: `2026-08-19-v32`
 - quick-input identity field order and favorite/recent semantics;
 - cyclic rotation history remains append-only across cycles;
 - `skipRotation` is not equivalent to ordinary cancellation;
-- bulk postpone requires a caller-supplied real `YYYY-MM-DD` date; browser and Worker use the same shared validator and no layer invents a date;
+- single and bulk postpone require caller-supplied real `YYYY-MM-DD` dates; Worker uses the shared validator and no layer invents a date;
 - startup snapshots are same-day only and are not used as complete Logs data;
 - startup acceleration applies only to the initial bootstrap in a page session; manual Sync remains a full refresh;
 - accelerated Core/snapshot startup may use only a temporary `startup-core` forecast marker to avoid blocking first paint; full bootstrap remains the authoritative forecast source;
@@ -71,8 +72,9 @@ Worker build marker: `2026-08-19-v32`
 ## Current maintenance decision
 
 - Startup performance: two-stage startup active; initial render no longer waits for Open-Meteo fallback; background full refresh begins only after the initial response has been returned; Logs/manual Sync remain full-data.
-- Browser API request duplication: external UI modules now have `client/api-client.js` as the shared request boundary.
+- Browser API request duplication: external UI modules use `client/api-client.js` as the shared request boundary.
 - Client/Worker date validation duplication: removed; `shared/iso-date.js` is the single contract for real `YYYY-MM-DD` validation.
+- Single-plan postpone validation: fail-closed at the Worker boundary, matching bulk postpone semantics.
 - CSS responsibility extraction: complete and active.
 - Log runtime delegation: complete and active.
 - Log utility buttons: wired and active through `log-tools-ui.js` against existing GAS contracts.
@@ -81,4 +83,4 @@ Worker build marker: `2026-08-19-v32`
 - Bulk-plan request delegation: complete and active.
 - Today outlook render order: concrete source defect identified; direct `index.html` fix remains pending rather than hidden in Worker/runtime injection.
 - The client page marker remains `20260819-02` because persisted `index.html` itself was not rewritten in this pass; the next safe source edit of `index.html` must roll it forward to reflect accumulated external-runtime changes.
-- Worker build is `2026-08-19-v32` after moving Worker postpone-date validation onto the shared ISO date contract.
+- Worker build is `2026-08-19-v33` after adding fail-closed single-plan postpone date validation.
