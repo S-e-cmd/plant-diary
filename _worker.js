@@ -1,7 +1,7 @@
 import { GasResponseError, GasTimeoutError, fetchGas, parseGasJson } from './worker/gas-transport.js';
 import { ApiContractError, normalizeApiBody } from './worker/api-contract.js';
 
-const API_PATH = '/api'; // build: 2026-08-19-v44
+const API_PATH = '/api'; // build: 2026-08-19-v45
 const API_METHOD = 'POST';
 const STARTUP_SCRIPT_PATH = '/client/startup-loader.js';
 
@@ -24,137 +24,91 @@ async function serveAsset_(request, env, pathname) {
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('text/html')) return response;
 
-  const html = await response.text();
-  const marker = '<script>';
-  if (!html.includes(marker) || html.includes('data-startup-loader')) {
-    return new Response(html, { status: response.status, headers: response.headers });
+  let html = await response.text();
+  const startupScriptResponse = await env.ASSETS.fetch(new Request(new URL(STARTUP_SCRIPT_PATH, request.url), request));
+  if (startupScriptResponse.ok) {
+    const startupScript = await startupScriptResponse.text();
+    html = html.replace('<script>', `<script>${startupScript}\n</script>\n<script>`);
+  } else {
+    html = html.replace('<script>', `<script src="${STARTUP_SCRIPT_PATH}"></script>\n<script>`);
   }
-
-  const loaderUrl = new URL(STARTUP_SCRIPT_PATH, request.url);
-  const loaderResponse = await env.ASSETS.fetch(new Request(loaderUrl, { method: 'GET' }));
-  const startupScript = loaderResponse.ok
-    ? `<script data-startup-loader>\n${await loaderResponse.text()}\n</script>`
-    : `<script src=".${STARTUP_SCRIPT_PATH}" data-startup-loader></script>`;
 
   const headers = new Headers(response.headers);
   headers.delete('content-length');
   headers.set('cache-control', 'no-store');
-  return new Response(html.replace(marker, `${startupScript}\n${marker}`), {
-    status: response.status,
-    headers
-  });
-}
-
-function requestAction_(body) {
-  try {
-    return JSON.parse(body)?.action || '';
-  } catch {
-    return '';
-  }
-}
-
-function requireJsonBody_(body) {
-  try {
-    JSON.parse(body);
-  } catch {
-    throw new ApiContractError('送信内容は正しいJSON形式で指定してください。');
-  }
-}
-
-function isBootstrapShape_(result) {
-  return !!(result && typeof result === 'object' && (Array.isArray(result.actuals) || Array.isArray(result.plans)));
-}
-
-function normalizeWrappedBootstrap_(payload, result, metaKey, meta) {
-  if (result?.bootstrap && typeof result.bootstrap === 'object') {
-    return {
-      ...payload,
-      data: {
-        ...result.bootstrap,
-        [metaKey]: meta
-      }
-    };
-  }
-  if (isBootstrapShape_(result)) return payload;
-  return null;
-}
-
-function normalizeGasResponse_(action, payload) {
-  if (!payload?.ok) return payload;
-
-  const result = payload.data;
-  if (action === 'syncAllPlansCalendar') {
-    const normalized = normalizeWrappedBootstrap_(payload, result, 'calendarBulkResult', {
-      registered: Number(result?.registered) || 0,
-      skipped: Number(result?.skipped) || 0
-    });
-    if (normalized) return normalized;
-    throw new GasResponseError('GASの一括カレンダー応答形式が不正です。');
-  }
-
-  if (action === 'batchPlans') {
-    const normalized = normalizeWrappedBootstrap_(payload, result, 'batchPlansResult', {
-      processed: Number(result?.processed) || 0,
-      skipped: Number(result?.skipped) || 0
-    });
-    if (normalized) return normalized;
-    throw new GasResponseError('GASの一括予定応答形式が不正です。');
-  }
-
-  return payload;
+  return new Response(html, { status: response.status, statusText: response.statusText, headers });
 }
 
 async function handleApiRequest_(request) {
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: apiHeaders_() });
-  }
-
   if (request.method !== API_METHOD) {
-    return json_({ ok: false, error: 'POSTのみ利用できます。' }, 405);
+    return jsonResponse_({ ok: false, error: 'Method Not Allowed' }, 405);
   }
 
-  const body = await request.text();
-  if (!body) {
-    return json_({ ok: false, error: '送信内容が空です。' }, 400);
+  let rawBody;
+  try {
+    rawBody = await request.text();
+  } catch {
+    return jsonResponse_({ ok: false, error: 'リクエスト本文を読み取れませんでした。' }, 400);
   }
 
   try {
-    requireJsonBody_(body);
-    const normalizedBody = normalizeApiBody(body);
-    const action = requestAction_(normalizedBody);
-    const gasResponse = await fetchGas(normalizedBody);
-    const data = normalizeGasResponse_(action, await parseGasJson(gasResponse));
-    return json_(data, gasResponse.ok ? 200 : gasResponse.status);
+    JSON.parse(rawBody);
+  } catch {
+    return jsonResponse_({ ok: false, error: '正しいJSON形式で送信してください。' }, 400);
+  }
+
+  let body;
+  try {
+    body = normalizeApiBody(rawBody);
   } catch (error) {
     if (error instanceof ApiContractError) {
-      return json_({ ok: false, error: error.message }, 400);
+      return jsonResponse_({ ok: false, error: error.message }, 400);
+    }
+    throw error;
+  }
+
+  try {
+    const gasResponse = await fetchGas(body);
+    const gasJson = await parseGasJson(gasResponse);
+    if (!gasResponse.ok) {
+      return jsonResponse_({ ok: false, error: gasJson?.error || 'GASへの接続に失敗しました。' }, 502);
+    }
+    if (!gasJson?.ok) {
+      return jsonResponse_({ ok: false, error: gasJson?.error || 'GASで処理に失敗しました。' }, 400);
     }
 
+    const requestJson = JSON.parse(body);
+    if (requestJson.action === 'syncAllPlansCalendar') {
+      const wrapper = gasJson.data;
+      if (!wrapper?.bootstrap || typeof wrapper.bootstrap !== 'object') {
+        return jsonResponse_({ ok: false, error: '一括カレンダー登録の応答形式が正しくありません。' }, 502);
+      }
+      return jsonResponse_({ ok: true, data: { ...wrapper.bootstrap, calendarBulkResult: { registered: wrapper.registered ?? 0, skipped: wrapper.skipped ?? 0 } } });
+    }
+    if (requestJson.action === 'batchPlans') {
+      const wrapper = gasJson.data;
+      if (wrapper?.bootstrap && typeof wrapper.bootstrap === 'object') {
+        return jsonResponse_({ ok: true, data: { ...wrapper.bootstrap, batchPlansResult: { processed: wrapper.processed ?? 0, skipped: wrapper.skipped ?? 0 } } });
+      }
+      if (!wrapper || typeof wrapper !== 'object') {
+        return jsonResponse_({ ok: false, error: '一括予定処理の応答形式が正しくありません。' }, 502);
+      }
+    }
+    return jsonResponse_(gasJson);
+  } catch (error) {
     if (error instanceof GasTimeoutError) {
-      return json_({ ok: false, error: error.message }, 504);
+      return jsonResponse_({ ok: false, error: error.message }, 504);
     }
-
     if (error instanceof GasResponseError) {
-      return json_({ ok: false, error: error.message }, 502);
+      return jsonResponse_({ ok: false, error: error.message }, 502);
     }
-
-    return json_({
-      ok: false,
-      error: 'GASとの通信に失敗しました: ' + String(error?.message || error)
-    }, 502);
+    return jsonResponse_({ ok: false, error: 'GASとの通信に失敗しました。' }, 502);
   }
 }
 
-function json_(data, status = 200) {
+function jsonResponse_(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: apiHeaders_()
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
   });
-}
-
-function apiHeaders_() {
-  return {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-store'
-  };
 }
