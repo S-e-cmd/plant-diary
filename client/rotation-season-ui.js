@@ -32,13 +32,13 @@ export function installRotationSeasonUi({ getState, getModel }) {
 
     todayList.querySelectorAll('[data-rotation-season-prompt]').forEach(node => node.remove());
 
-    if (!model) return;
+    if (!model?.seasonCapable) return;
 
     if (model.mode === 'start') {
       const card = document.createElement('div');
       card.className = 'card rotation-card';
       card.dataset.rotationSeasonPrompt = 'start';
-      card.innerHTML = `<div class="rotation-head"><div><div class="pin-title">${model.rotationName}</div><div class="log-meta">今季の開始時期（${monthDayLabel_(model.startMonthDay)}以降）になりました</div></div></div><button class="primary" data-rotation-season-start>今季を開始</button>`;
+      card.innerHTML = `<div class="rotation-head"><div><div class="pin-title">ダリア用ローテーション</div><div class="log-meta">今季の開始時期（${monthDayLabel_(model.startMonthDay)}以降）になりました</div></div></div><button class="primary" data-rotation-season-start>今季を開始</button>`;
       card.querySelector('[data-rotation-season-start]').onclick = () => {
         mutate_({ action: 'startRotationSeason', rotationName: model.rotationName }, '今季開始に失敗しました。');
       };
