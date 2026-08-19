@@ -86,7 +86,14 @@ for (const date of [undefined, '', '2026-8-21', '2026-02-29']) {
 for (const action of ['update', 'delete', 'restore', 'postponePlan', 'cancelPlan', 'calendar', 'syncPlanCalendar', 'completePlan', 'skipRotation']) {
   for (const id of [undefined, '', '   ']) {
     assert.throws(
-      () => normalizeApiPayload({ action, id, type: ['update', 'delete', 'restore'].includes(action) ? 'actual' : undefined, patch: action === 'update' ? { action: '水やり' } : undefined, date: action === 'postponePlan' ? '2026-08-21' : undefined }),
+      () => normalizeApiPayload({
+        action,
+        id,
+        type: ['update', 'delete', 'restore'].includes(action) ? 'actual' : undefined,
+        patch: action === 'update' ? { action: '水やり' } : undefined,
+        entry: action === 'completePlan' ? { type: 'actual', action: '水やり' } : undefined,
+        date: action === 'postponePlan' ? '2026-08-21' : undefined
+      }),
       error => error instanceof ApiContractError && error.message === `${action}には対象IDが必要です。`
     );
   }
@@ -108,14 +115,65 @@ for (const patch of [undefined, null, '', '水やり', [], {}, 0, false]) {
   );
 }
 
+const validEntries = [
+  { type: 'actual', action: '水やり', date: '2026-08-19' },
+  { type: 'plan', action: '消毒', date: '2026-08-20' }
+];
+assert.deepEqual(
+  normalizeApiPayload({ action: 'save', entries: validEntries }),
+  { action: 'save', entries: validEntries }
+);
+assert.deepEqual(
+  normalizeApiPayload({ action: 'checkDuplicates', entries: validEntries }),
+  { action: 'checkDuplicates', entries: validEntries }
+);
+
+for (const action of ['save', 'checkDuplicates']) {
+  for (const entries of [undefined, null, '', {}, 1]) {
+    assert.throws(
+      () => normalizeApiPayload({ action, entries }),
+      error => error instanceof ApiContractError && error.message === `${action}にはentries配列が必要です。`
+    );
+  }
+  assert.throws(
+    () => normalizeApiPayload({ action, entries: [] }),
+    error => error instanceof ApiContractError && error.message === `${action}には1件以上のentryが必要です。`
+  );
+  for (const entry of [null, '', [], {}]) {
+    assert.throws(
+      () => normalizeApiPayload({ action, entries: [entry] }),
+      error => error instanceof ApiContractError && error.message === `${action}の各entryは空でないオブジェクトで指定してください。`
+    );
+  }
+  for (const type of [undefined, '', 'other', 'Actual']) {
+    assert.throws(
+      () => normalizeApiPayload({ action, entries: [{ type, action: '水やり' }] }),
+      error => error instanceof ApiContractError && error.message === `${action}の各entry.typeはactualまたはplanで指定してください。`
+    );
+  }
+  for (const work of [undefined, '', '   ']) {
+    assert.throws(
+      () => normalizeApiPayload({ action, entries: [{ type: 'actual', action: work }] }),
+      error => error instanceof ApiContractError && error.message === `${action}の各entryには作業内容が必要です。`
+    );
+  }
+}
+
+for (const entry of [undefined, null, '', [], {}, 0, false]) {
+  assert.throws(
+    () => normalizeApiPayload({ action: 'completePlan', id: 'p1', entry }),
+    error => error instanceof ApiContractError && error.message === 'completePlanには空でないentryオブジェクトが必要です。'
+  );
+}
+
 assert.deepEqual(
   normalizeApiPayload({ action: 'skipRotation', id: 'p1' }),
   { action: 'skipRotation', id: 'p1' }
 );
 
 assert.deepEqual(
-  normalizeApiPayload({ action: 'completePlan', id: 'p1' }),
-  { action: 'completePlan', id: 'p1' }
+  normalizeApiPayload({ action: 'completePlan', id: 'p1', entry: { type: 'actual', action: '水やり' } }),
+  { action: 'completePlan', id: 'p1', entry: { type: 'actual', action: '水やり' } }
 );
 
 assert.deepEqual(
