@@ -1,7 +1,7 @@
 import { GasResponseError, GasTimeoutError, fetchGas, parseGasJson } from './worker/gas-transport.js';
 import { ApiContractError, normalizeApiBody } from './worker/api-contract.js';
 
-const API_PATH = '/api'; // build: 2026-08-19-v41
+const API_PATH = '/api'; // build: 2026-08-19-v42
 const API_METHOD = 'POST';
 const STARTUP_SCRIPT_PATH = '/client/startup-loader.js';
 
@@ -50,6 +50,14 @@ function requestAction_(body) {
     return JSON.parse(body)?.action || '';
   } catch {
     return '';
+  }
+}
+
+function requireJsonBody_(body) {
+  try {
+    JSON.parse(body);
+  } catch {
+    throw new ApiContractError('送信内容は正しいJSON形式で指定してください。');
   }
 }
 
@@ -111,6 +119,7 @@ async function handleApiRequest_(request) {
   }
 
   try {
+    requireJsonBody_(body);
     const normalizedBody = normalizeApiBody(body);
     const action = requestAction_(normalizedBody);
     const gasResponse = await fetchGas(normalizedBody);
