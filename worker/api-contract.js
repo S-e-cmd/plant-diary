@@ -195,7 +195,7 @@ export function normalizeApiBody(body) {
   try {
     payload = JSON.parse(body);
   } catch {
-    throw new ApiContractError('送信内容は正しいJSON形式で指定してください。');
+    return body;
   }
   return JSON.stringify(normalizeApiPayload(payload));
 }
