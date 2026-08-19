@@ -2,7 +2,7 @@
 
 Updated: 2026-08-19
 Client page marker: `20260819-02`
-Worker build marker: `2026-08-19-v37`
+Worker build marker: `2026-08-19-v38`
 
 ## Current state
 
@@ -29,7 +29,9 @@ Worker build marker: `2026-08-19-v37`
 - Worker rejects invalid record types for `update`, `delete`, and `restore`. Their `type` must be exactly `actual` or `plan`; missing, blank, mixed-case, or unrelated values fail before GAS.
 - Worker requires `update.patch` to be a non-empty object and rejects missing, null, scalar, array, or empty-object patches before GAS mutation.
 - Worker restricts `bulkPlans` / `batchPlans` operation kinds to exactly `complete`, `postpone`, or `cancel`; unsupported, blank, or case-mismatched operation values fail before GAS. The existing `operation` and legacy `kind` input forms remain accepted for those three values.
-- Worker now also normalizes `bulkPlans.ids`: input must be an array, IDs are string-trimmed, blank entries are removed, duplicates are removed while preserving order, and at least one valid ID must remain before the request can be forwarded to GAS.
+- Worker normalizes `bulkPlans.ids`: input must be an array, IDs are string-trimmed, blank entries are removed, duplicates are removed while preserving order, and at least one valid ID must remain before the request can be forwarded to GAS.
+- `calendarBulk` is intentionally an all-eligible-plans operation. The browser currently precomputes eligible IDs only to decide whether there is anything to do; the Worker discards those redundant IDs and GAS `syncAllPlansCalendar_()` independently selects all undeleted, unfinished, uncancelled, undated-without-event excluded plans that have a usable date and no calendar event ID.
+- GAS `syncAllPlansCalendar_()` returns `{ registered, skipped, bootstrap }`, while the browser expects the same bootstrap-shaped `data` used by single calendar registration. Worker v38 now flattens that wrapper to bootstrap-shaped data before returning it to the browser and preserves `{ registered, skipped }` under `calendarBulkResult`. A malformed successful bulk-calendar wrapper fails closed with HTTP 502 instead of reaching `applyBootstrap` with the wrong shape.
 - Worker/GAS transport responsibilities remain split. Browser `parse / calendar / calendarBulk / bulkPlans` normalize to GAS `analyze / syncPlanCalendar / syncAllPlansCalendar / batchPlans` at the Worker boundary.
 - `skipRotation` passes through unchanged after ID validation so GAS retains rotation mutation ownership.
 - GAS transport has a 25-second timeout; timeout responses use HTTP 504. Invalid GAS JSON and ordinary transport failures remain HTTP 502.
@@ -46,7 +48,7 @@ Worker build marker: `2026-08-19-v37`
 - `scripts/test-log-tools-ui.mjs` verifies analysis, usage and deleted-record rendering contracts, including the restore control identifier.
 - `scripts/test-startup-loader.mjs` verifies supported first startup, `startup-core` forecast markers for Core and legacy empty-forecast snapshots, deferred background full refresh, later full bootstrap calls, Logs full-data startup, and background forecast handoff.
 - `scripts/test-weather-runtime.mjs` verifies background full-bootstrap `weather / forecasts / forecastHourly` are applied to current application state rather than a stale startup snapshot.
-- `scripts/test-worker-contract.mjs` verifies startup-loader delivery and Worker transport contracts.
+- `scripts/test-worker-contract.mjs` verifies startup-loader delivery and Worker transport contracts, plus `calendarBulk` request normalization, GAS wrapper flattening to bootstrap-shaped browser data, retained registered/skipped metadata, and fail-closed handling of malformed successful bulk-calendar responses.
 - `scripts/test-log-contract.mjs` / `scripts/test-log-runtime.mjs` cover log range/timing/search/filter/sort/pagination behavior.
 - `scripts/test-quick-input-utils.mjs` / `scripts/test-quick-input-runtime.mjs` cover quick-input behavior.
 - `scripts/test-rotation-utils.mjs` / `scripts/test-rotation-runtime.mjs` cover rotation selection/history/next-cycle behavior.
@@ -70,6 +72,8 @@ Worker build marker: `2026-08-19-v37`
 - `update` requires a non-empty object patch and does not accept null, scalar, array, or empty-object mutation payloads;
 - bulk plan operations are restricted to `complete`, `postpone`, or `cancel`; unsupported operation kinds fail before GAS;
 - bulk plan IDs must arrive as an array, are trim/deduplicated at the Worker boundary, and must contain at least one non-empty target ID after normalization;
+- `calendarBulk` means all currently eligible plans, not selected-plan calendar registration; browser-sent IDs are not the mutation authority;
+- successful `calendarBulk` browser data must be bootstrap-shaped even though GAS returns a registered/skipped wrapper; Worker owns that response adaptation and malformed wrappers fail closed;
 - startup snapshots are same-day only and are not used as complete Logs data;
 - startup acceleration applies only to the initial bootstrap in a page session; manual Sync remains a full refresh;
 - accelerated Core/snapshot startup may use only a temporary `startup-core` forecast marker to avoid blocking first paint; full bootstrap remains the authoritative forecast source;
@@ -90,6 +94,7 @@ Worker build marker: `2026-08-19-v37`
 - Update patch validation: `update` requires a non-empty object patch before the request can reach GAS.
 - Bulk operation validation: only `complete`, `postpone`, and `cancel` are accepted; legacy `kind` remains compatible for those values.
 - Bulk target validation: `bulkPlans.ids` is normalized at the Worker boundary and must retain at least one target after blank removal and de-duplication.
+- Bulk calendar semantics: `calendarBulk` is all-eligible-plans registration. Worker discards redundant browser IDs, GAS selects eligible rows, and Worker converts GAS `{ registered, skipped, bootstrap }` into bootstrap-shaped browser data while preserving counts under `calendarBulkResult`.
 - CSS responsibility extraction: complete and active.
 - Log runtime delegation: complete and active.
 - Log utility buttons: wired and active through `log-tools-ui.js` against existing GAS contracts.
@@ -98,4 +103,4 @@ Worker build marker: `2026-08-19-v37`
 - Bulk-plan request delegation: complete and active.
 - Today outlook render order: concrete source defect identified; direct `index.html` fix remains pending rather than hidden in Worker/runtime injection.
 - The client page marker remains `20260819-02` because persisted `index.html` itself was not rewritten in this pass; the next safe source edit of `index.html` must roll it forward to reflect accumulated external-runtime changes.
-- Worker build is `2026-08-19-v37` after adding fail-closed bulk target-ID normalization and validation.
+- Worker build is `2026-08-19-v38` after normalizing the bulk-calendar GAS response to the browser bootstrap contract.
