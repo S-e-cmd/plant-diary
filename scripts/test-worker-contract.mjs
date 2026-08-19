@@ -155,6 +155,65 @@ try {
     });
   });
 
+  await run('calendarBulk drops redundant ids upstream and returns bootstrap-shaped data', async () => {
+    let upstreamBody = null;
+    globalThis.fetch = async (url, init) => {
+      upstreamBody = JSON.parse(init.body);
+      return new Response(JSON.stringify({
+        ok: true,
+        data: {
+          registered: 2,
+          skipped: 3,
+          bootstrap: {
+            actuals: [{ id: 'a1' }],
+            plans: [{ id: 'p1' }],
+            weather: { code: 1 }
+          }
+        }
+      }), { status: 200 });
+    };
+
+    const response = await worker.fetch(
+      request('/api', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'calendarBulk', ids: ['p1', 'p2'] })
+      }),
+      { ASSETS: { fetch: originalFetch } }
+    );
+
+    assert.deepEqual(upstreamBody, { action: 'syncAllPlansCalendar' });
+    assert.deepEqual(await json(response), {
+      ok: true,
+      data: {
+        actuals: [{ id: 'a1' }],
+        plans: [{ id: 'p1' }],
+        weather: { code: 1 },
+        calendarBulkResult: { registered: 2, skipped: 3 }
+      }
+    });
+  });
+
+  await run('calendarBulk rejects malformed successful GAS wrapper', async () => {
+    globalThis.fetch = async () => new Response(JSON.stringify({
+      ok: true,
+      data: { registered: 1, skipped: 0 }
+    }), { status: 200 });
+
+    const response = await worker.fetch(
+      request('/api', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'calendarBulk', ids: ['p1'] })
+      }),
+      { ASSETS: { fetch: originalFetch } }
+    );
+
+    assert.equal(response.status, 502);
+    assert.deepEqual(await json(response), {
+      ok: false,
+      error: 'GASの一括カレンダー応答形式が不正です。'
+    });
+  });
+
   await run('invalid GAS JSON returns the existing 502 contract', async () => {
     globalThis.fetch = async () => new Response('<html>not json</html>', { status: 200 });
 
