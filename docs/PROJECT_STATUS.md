@@ -2,7 +2,7 @@
 
 Updated: 2026-08-19
 Client page marker: `20260819-02`
-Worker build marker: `2026-08-19-v35`
+Worker build marker: `2026-08-19-v36`
 
 ## Current state
 
@@ -26,7 +26,9 @@ Worker build marker: `2026-08-19-v35`
 - Single-plan `postponePlan` uses the same Worker-side real-calendar validation as bulk postpone. Impossible or malformed dates are rejected before GAS mutation instead of being passed through from the browser prompt.
 - Client and Worker share one real-calendar `YYYY-MM-DD` validator in `shared/iso-date.js`. `client/plan-bulk-utils.js` and `worker/api-contract.js` both import that module, preventing browser/Worker validity drift.
 - Worker rejects missing or whitespace-only record IDs before GAS mutation for `update`, `delete`, `restore`, `postponePlan`, `cancelPlan`, `calendar` / `syncPlanCalendar`, `completePlan`, and `skipRotation`.
-- Worker now also rejects invalid record types for `update`, `delete`, and `restore`. Their `type` must be exactly `actual` or `plan`; missing, blank, mixed-case, or unrelated values fail before GAS.
+- Worker rejects invalid record types for `update`, `delete`, and `restore`. Their `type` must be exactly `actual` or `plan`; missing, blank, mixed-case, or unrelated values fail before GAS.
+- Worker now requires `update.patch` to be a non-empty object and rejects missing, null, scalar, array, or empty-object patches before GAS mutation.
+- Worker now restricts `bulkPlans` / `batchPlans` operation kinds to exactly `complete`, `postpone`, or `cancel`; unsupported, blank, or case-mismatched operation values fail before GAS. The existing `operation` and legacy `kind` input forms remain accepted for those three values.
 - Worker/GAS transport responsibilities remain split. Browser `parse / calendar / calendarBulk / bulkPlans` normalize to GAS `analyze / syncPlanCalendar / syncAllPlansCalendar / batchPlans` at the Worker boundary.
 - `skipRotation` passes through unchanged after ID validation so GAS retains rotation mutation ownership.
 - GAS transport has a 25-second timeout; timeout responses use HTTP 504. Invalid GAS JSON and ordinary transport failures remain HTTP 502.
@@ -39,7 +41,7 @@ Worker build marker: `2026-08-19-v35`
 - `scripts/test-api-client.mjs` covers browser same-origin API success, API error and non-JSON response behavior.
 - `scripts/test-iso-date.mjs` covers valid dates, leap day, impossible month-end dates, invalid month values and strict zero-padded format.
 - `scripts/check-shared-contract.mjs` requires client bulk-plan validation and Worker API validation to import `shared/iso-date.js` and rejects reintroduction of local date validation.
-- `scripts/test-api-contract.mjs` covers single-plan and bulk postpone fail-closed validation, missing/blank ID rejection across record mutations, and invalid `type` rejection for `update`, `delete`, and `restore`, while preserving valid `actual` / `plan` payloads.
+- `scripts/test-api-contract.mjs` covers single-plan and bulk postpone fail-closed validation, missing/blank ID rejection across record mutations, invalid `type` rejection for `update`, `delete`, and `restore`, invalid/empty `update.patch`, and unsupported bulk operation values while preserving valid payloads and legacy `kind` compatibility.
 - `scripts/test-log-tools-ui.mjs` verifies analysis, usage and deleted-record rendering contracts, including the restore control identifier.
 - `scripts/test-startup-loader.mjs` verifies supported first startup, `startup-core` forecast markers for Core and legacy empty-forecast snapshots, deferred background full refresh, later full bootstrap calls, Logs full-data startup, and background forecast handoff.
 - `scripts/test-weather-runtime.mjs` verifies background full-bootstrap `weather / forecasts / forecastHourly` are applied to current application state rather than a stale startup snapshot.
@@ -64,6 +66,8 @@ Worker build marker: `2026-08-19-v35`
 - single and bulk postpone require caller-supplied real `YYYY-MM-DD` dates; Worker uses the shared validator and no layer invents a date;
 - record-scoped mutations require a non-empty target ID and fail before GAS when the ID is absent or whitespace-only;
 - `update`, `delete`, and `restore` require `type` to be exactly `actual` or `plan` and fail before GAS otherwise;
+- `update` requires a non-empty object patch and does not accept null, scalar, array, or empty-object mutation payloads;
+- bulk plan operations are restricted to `complete`, `postpone`, or `cancel`; unsupported operation kinds fail before GAS;
 - startup snapshots are same-day only and are not used as complete Logs data;
 - startup acceleration applies only to the initial bootstrap in a page session; manual Sync remains a full refresh;
 - accelerated Core/snapshot startup may use only a temporary `startup-core` forecast marker to avoid blocking first paint; full bootstrap remains the authoritative forecast source;
@@ -81,6 +85,8 @@ Worker build marker: `2026-08-19-v35`
 - Single-plan postpone validation: fail-closed at the Worker boundary, matching bulk postpone semantics.
 - Record ID validation: record-scoped mutations fail closed at the Worker boundary before GAS when the target ID is absent or blank.
 - Record type validation: `update`, `delete`, and `restore` fail closed unless `type` is exactly `actual` or `plan`.
+- Update patch validation: `update` now requires a non-empty object patch before the request can reach GAS.
+- Bulk operation validation: only `complete`, `postpone`, and `cancel` are accepted; legacy `kind` remains compatible for those values.
 - CSS responsibility extraction: complete and active.
 - Log runtime delegation: complete and active.
 - Log utility buttons: wired and active through `log-tools-ui.js` against existing GAS contracts.
@@ -89,4 +95,4 @@ Worker build marker: `2026-08-19-v35`
 - Bulk-plan request delegation: complete and active.
 - Today outlook render order: concrete source defect identified; direct `index.html` fix remains pending rather than hidden in Worker/runtime injection.
 - The client page marker remains `20260819-02` because persisted `index.html` itself was not rewritten in this pass; the next safe source edit of `index.html` must roll it forward to reflect accumulated external-runtime changes.
-- Worker build is `2026-08-19-v35` after adding fail-closed record type validation.
+- Worker build is `2026-08-19-v36` after adding fail-closed update-patch and bulk-operation validation.
