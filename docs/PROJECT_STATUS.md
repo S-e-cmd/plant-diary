@@ -2,7 +2,7 @@
 
 Updated: 2026-08-19
 Client page marker: `20260819-03`
-Worker build marker: `2026-08-19-v42`
+Worker build marker: `2026-08-19-v43`
 
 ## Current state
 
@@ -15,13 +15,17 @@ Worker build marker: `2026-08-19-v42`
 - Logs bypasses partial startup data and performs a full bootstrap immediately. Later manual Sync requests also perform full bootstrap.
 - `startup-loader.js` is the only startup fetch wrapper. The superseded duplicate startup path remains removed.
 - Background full-bootstrap refresh hands `weather`, `forecasts`, and `forecastHourly` through the active weather runtime before `applyBootstrap`, preventing snapshot/Core forecast state from remaining stale after the full data arrives.
-- The current GAS deployment supports `bootstrapCore` and full `bootstrap`; Worker transport points to the two-stage GAS deployment supplied on 2026-08-19.
+- The current deployed GAS supports `bootstrapCore` and full `bootstrap`. A new GAS source update for seasonal rotation lifecycle has been prepared but still requires GAS deployment before the new season controls become active.
 - Browser external UI modules use `client/api-client.js` for same-origin `/api` POST, JSON parsing and API error conversion instead of duplicating request code.
 - Weather decision helpers and browser-download mechanics remain active external client modules.
 - Log processing is active runtime code: `log-date-utils.js` / `log-list-utils.js` own pure operations and `log-runtime.js` owns state-bound range, timing, filtering, sorting and pagination.
 - Log utility UI is active through `log-tools-ui.js`, installed by the already-active `log-runtime` initialization. `履歴分析` uses GAS `getAnalysis`; `資材・薬剤の使用履歴` renders the `usage` portion of that analysis; `削除済みの記録` explicitly requests a full `bootstrap` before rendering `trash`; each restore action uses GAS `restore` and applies the returned refreshed bootstrap.
 - Quick-input processing is active runtime code through `quick-input-utils.js` / `quick-input-runtime.js`.
-- Rotation processing is active runtime code through `rotation-utils.js` / `rotation-runtime.js`.
+- Rotation processing is active through `rotation-utils.js` / `rotation-runtime.js`. Seasonal lifecycle support is additionally implemented in `rotation-season-ui.js`.
+- Seasonal rotation design is explicit: `今季終了` closes only the remaining active rotation rows for the current season; definitions and historical actual records remain. The next season is not auto-started. Instead, after the stored annual start threshold is reached in a later year, Today shows an `今季を開始` prompt. Starting creates a fresh ordered cycle from retained definitions beginning at rotation order 1.
+- The initial annual restart threshold is `07-01` for the current dahlia rotation. The threshold is persisted by GAS with the season-ending state rather than LocalStorage, so another device can make the same next-season decision.
+- Rotation season metadata is returned on rotation plan objects as `rotationSeasonState`, `rotationSeasonYear`, `rotationStartMonthDay`, and `rotationSeasonCapable`. The UI exposes seasonal controls only when `rotationSeasonCapable === true`; therefore Cloudflare/client code may deploy before the corresponding GAS update without exposing broken controls.
+- Worker accepts `endRotationSeason` and `startRotationSeason` only with a non-empty `rotationName`. `endRotationSeason.startMonthDay` defaults to `07-01` and must be a real `MM-DD` calendar value.
 - Bulk-plan request construction is active runtime code through `plan-bulk-utils.js`.
 - Client and Worker share one real-calendar `YYYY-MM-DD` validator in `shared/iso-date.js`. Single-plan and bulk postpone reject malformed or impossible dates before GAS mutation.
 - Worker rejects missing or whitespace-only record IDs before GAS mutation for record-scoped operations and rejects invalid record types for `update`, `delete`, and `restore`.
@@ -39,15 +43,16 @@ Worker build marker: `2026-08-19-v42`
 - Worker/GAS transport responsibilities remain split. Browser aliases normalize to GAS action names at the Worker boundary while GAS retains spreadsheet mutation ownership.
 - `skipRotation` remains distinct from ordinary cancellation and passes through after ID validation so GAS retains rotation mutation ownership.
 - GAS transport has a 25-second timeout; timeout responses use HTTP 504. Invalid GAS JSON and ordinary transport failures remain HTTP 502.
-- Today rendering now uses `renderTodayTab()`, which always renders the base Today content first and inserts Outlook afterward. Initial Today display, favorite changes, rotation expansion, section collapse/expand, and Outlook day-range changes all use that full redraw path, so the `先の予定` card is no longer erased by `renderToday()`.
+- Today rendering uses `renderTodayTab()`, which always renders the base Today content first and inserts Outlook afterward. Initial Today display, favorite changes, rotation expansion, section collapse/expand, and Outlook day-range changes all use that full redraw path.
 - Local handoff continues through the current parent starter `START_HERE.md`; existing application contracts and deployment architecture remain protected.
 
 ## Verification
 
-- `scripts/check-client-contract.mjs` syntax-checks inline/client JavaScript, protects CSS, DOM, LocalStorage and `/api` contracts, requires active runtime imports/delegation, protects the log utility buttons, and now protects the Today render contract: base Today content must render before Outlook and all full Today redraw paths must use `renderTodayTab()`.
+- `scripts/check-client-contract.mjs` syntax-checks inline/client JavaScript, protects CSS, DOM, LocalStorage and `/api` contracts, requires active runtime imports/delegation, protects the log utility buttons, and protects the Today render contract.
+- Every file under `client/*.js`, including `rotation-season-ui.js`, is syntax-checked by the normal client contract test.
 - `scripts/test-api-client.mjs` covers browser same-origin API success, API error and non-JSON response behavior.
 - `scripts/test-api-contract.mjs` covers record ID/type validation, update patches, save/checkDuplicate entries, complete-plan entries, analyze inputs, settings objects, postpone dates, and bulk operation/target normalization.
-- `scripts/test-api-final-boundary.mjs` verifies supported-action enforcement and direct `batchPlans` validation parity.
+- `scripts/test-api-final-boundary.mjs` verifies supported-action enforcement, direct `batchPlans` validation parity, and seasonal rotation action contracts including rotation name and real `MM-DD` validation.
 - `scripts/test-worker-json-boundary.mjs` verifies malformed JSON fails at the Worker boundary without an upstream GAS request.
 - `scripts/test-iso-date.mjs` covers valid dates, leap day, impossible month-end dates, invalid month values and strict zero-padded format.
 - `scripts/check-shared-contract.mjs` requires client bulk-plan validation and Worker API validation to import `shared/iso-date.js` and rejects reintroduction of local date validation.
@@ -57,8 +62,9 @@ Worker build marker: `2026-08-19-v42`
 - `scripts/test-worker-contract.mjs` verifies startup-loader delivery, Worker transport contracts, and wrapped bootstrap normalization for bulk calendar and bulk plan mutations.
 - `scripts/test-log-contract.mjs` / `scripts/test-log-runtime.mjs` cover log range/timing/search/filter/sort/pagination behavior.
 - `scripts/test-quick-input-utils.mjs` / `scripts/test-quick-input-runtime.mjs` cover quick-input behavior.
-- `scripts/test-rotation-utils.mjs` / `scripts/test-rotation-runtime.mjs` cover rotation selection/history/next-cycle behavior.
+- `scripts/test-rotation-utils.mjs` / `scripts/test-rotation-runtime.mjs` now cover active rotation behavior, persisted season metadata, same-year suppression, next-year threshold detection, order-1 restart prompting, and GAS capability gating.
 - `scripts/test-plan-bulk-utils.mjs` covers bulk request construction and date validation through the shared date contract.
+- The prepared GAS source passes JavaScript syntax validation with `node --check`. Actual Apps Script runtime deployment is still required for the new season actions.
 - Focused startup / log / quick-input / rotation / plan-bulk / API / Worker checks remain in normal `npm test`. GitHub Actions are not required.
 
 ## Protected contracts
@@ -72,6 +78,11 @@ Worker build marker: `2026-08-19-v42`
 - log search-state shape and 20-item page size;
 - quick-input identity field order and favorite/recent semantics;
 - cyclic rotation history remains append-only across cycles;
+- rotation season ending must not delete the rotation definition or historical actual records;
+- next-season restart must be a user-confirmed action, not an automatic mutation;
+- next-season restart begins from rotation order 1 using retained definitions;
+- a season ended in year N must not reappear as a start prompt during year N; it may reappear only in a later year after its persisted start `MM-DD` threshold;
+- seasonal rotation UI must remain hidden until GAS advertises `rotationSeasonCapable`, preventing client/GAS deployment drift from exposing non-functional controls;
 - `skipRotation` is not equivalent to ordinary cancellation;
 - single and bulk postpone require caller-supplied real `YYYY-MM-DD` dates; Worker uses the shared validator and no layer invents a date;
 - record-scoped mutations require a non-empty target ID and fail before GAS when the ID is absent or whitespace-only;
@@ -89,7 +100,7 @@ Worker build marker: `2026-08-19-v42`
 - background full bootstrap must refresh `weather`, `forecasts`, and `forecastHourly` before the normal application bootstrap render runs;
 - deleted-record UI must use full bootstrap data rather than the partial startup snapshot;
 - log analysis/usage UI must consume the existing `getAnalysis` response rather than recompute a conflicting analysis in the browser;
-- Today full redraw order is `renderToday()` then `renderOutlook()` through `renderTodayTab()`; Outlook must not be inserted before `renderToday()` clears `#todayList`;
+- Today full redraw order is `renderToday()` then `renderOutlook()` through `renderTodayTab()`;
 - active stylesheet boundary remains `styles.css`;
 - Cloudflare Pages deployment remains from `main`.
 
@@ -97,14 +108,15 @@ Worker build marker: `2026-08-19-v42`
 
 - Startup performance: two-stage startup active; initial render no longer waits for Open-Meteo fallback; background full refresh begins only after the initial response has been returned; Logs/manual Sync remain full-data.
 - Browser API request duplication: external UI modules use `client/api-client.js` as the shared request boundary.
-- API boundary hardening: complete for the currently supported action set. Worker now validates mutation targets/payload structure, analyze/settings inputs, shared date rules, direct bulk calls, malformed JSON, and unsupported actions before GAS.
+- API boundary hardening: complete for the currently supported action set, including the new rotation-season operations.
 - Bulk response adaptation: complete for `calendarBulk` and `batchPlans`; browser state receives bootstrap-shaped data.
 - CSS responsibility extraction: complete and active.
 - Log runtime delegation: complete and active.
 - Log utility buttons: wired and active through `log-tools-ui.js` against existing GAS contracts.
 - Quick-input runtime delegation: complete and active.
 - Rotation runtime delegation: complete and active.
+- Rotation season lifecycle: client/Worker implementation complete and capability-gated; corresponding GAS source is prepared and requires deployment before controls activate.
 - Bulk-plan request delegation: complete and active.
 - Today outlook render order: fixed in persisted `index.html` through `renderTodayTab()` and protected by the normal client contract test.
 - Client page marker is `20260819-03`.
-- Worker build is `2026-08-19-v42`.
+- Worker build is `2026-08-19-v43`.
