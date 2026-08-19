@@ -21,6 +21,10 @@ function isNonEmptyObject_(value) {
   return !!(value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length);
 }
 
+function isObject_(value) {
+  return !!(value && typeof value === 'object' && !Array.isArray(value));
+}
+
 function requireId_(req) {
   if (!ID_REQUIRED_ACTIONS.has(req.action)) return;
   if (!String(req.id || '').trim()) {
@@ -70,6 +74,31 @@ function requireCompletePlanEntry_(req) {
   }
 }
 
+function normalizeAnalyze_(req) {
+  if (req.action !== 'parse' && req.action !== 'analyze') return null;
+  const text = String(req.rawText ?? req.text ?? '').trim();
+  if (!text) {
+    throw new ApiContractError('分析には作業内容が必要です。');
+  }
+  const inputType = String(req.type ?? req.inputType ?? '').trim();
+  if (!RECORD_TYPES.has(inputType)) {
+    throw new ApiContractError('分析のtypeはactualまたはplanで指定してください。');
+  }
+  return {
+    ...req,
+    action: 'analyze',
+    text,
+    inputType
+  };
+}
+
+function requireAppSettings_(req) {
+  if (req.action !== 'saveAppSettings') return;
+  if (!isObject_(req.settings)) {
+    throw new ApiContractError('saveAppSettingsにはsettingsオブジェクトが必要です。');
+  }
+}
+
 function normalizeBulkPlanIds_(ids) {
   if (!Array.isArray(ids)) {
     throw new ApiContractError('一括操作には対象IDの配列が必要です。');
@@ -88,15 +117,10 @@ export function normalizeApiPayload(payload) {
   requireUpdatePatch_(req);
   requireEntryList_(req);
   requireCompletePlanEntry_(req);
+  requireAppSettings_(req);
 
-  if (req.action === 'parse') {
-    return {
-      ...req,
-      action: 'analyze',
-      text: req.rawText ?? req.text ?? '',
-      inputType: req.type ?? req.inputType ?? 'actual'
-    };
-  }
+  const analyze = normalizeAnalyze_(req);
+  if (analyze) return analyze;
 
   if (req.action === 'calendar') {
     return { ...req, action: 'syncPlanCalendar' };
