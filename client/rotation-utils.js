@@ -30,36 +30,52 @@ export function normalizeMonthDay(value, fallback = '07-01') {
   return text;
 }
 
+export function rotationSeasonFromPlans(plans, rotationName) {
+  const rows = (plans || [])
+    .filter(item => isRotationPlan(item) && item.rotationName === rotationName && item.rotationSeasonState)
+    .map(item => ({
+      state: String(item.rotationSeasonState || ''),
+      year: Number(item.rotationSeasonYear) || 0,
+      startMonthDay: normalizeMonthDay(item.rotationStartMonthDay),
+      updatedAt: String(item.updatedAt || item.createdAt || '')
+    }))
+    .sort((a, b) => (b.year - a.year) || b.updatedAt.localeCompare(a.updatedAt));
+  return rows[0] || null;
+}
+
 export function shouldOfferSeasonStart(season, today) {
   if (!season || season.state !== 'ended') return false;
   const todayText = String(today || '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(todayText)) return false;
   const year = Number(todayText.slice(0, 4));
-  const endedYear = Number(season.endedYear) || 0;
+  const endedYear = Number(season.year ?? season.endedYear) || 0;
   if (!endedYear || year <= endedYear) return false;
   return todayText.slice(5) >= normalizeMonthDay(season.startMonthDay);
 }
 
 export function rotationViewModel(plans, actuals, minimumTotal = 12, options = {}) {
-  const seasons = options.seasons || {};
   const today = options.today || '';
   const names = rotationNames(plans);
   const activeItems = activeRotationPlans(plans);
   const activeName = activeItems[0]?.rotationName || '';
-  const candidateName = activeName || names.find(name => shouldOfferSeasonStart(seasons[name], today)) || '';
+  const candidateName = activeName || names.find(name => {
+    const configured = options.seasons?.[name];
+    const derived = rotationSeasonFromPlans(plans, name);
+    return shouldOfferSeasonStart(configured || derived, today);
+  }) || '';
   if (!candidateName) return null;
 
-  const season = seasons[candidateName] || {};
+  const season = options.seasons?.[candidateName] || rotationSeasonFromPlans(plans, candidateName) || {};
   if (!activeName && shouldOfferSeasonStart(season, today)) {
     return {
       mode: 'start',
       rotationName: candidateName,
       startMonthDay: normalizeMonthDay(season.startMonthDay),
-      endedYear: Number(season.endedYear) || 0
+      endedYear: Number(season.year ?? season.endedYear) || 0
     };
   }
 
-  if (season.state === 'ended') return null;
+  if (season.state === 'ended' && !activeName) return null;
 
   const items = activeRotationPlans(plans, candidateName);
   if (!items.length) return null;
