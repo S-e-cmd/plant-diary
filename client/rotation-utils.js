@@ -21,7 +21,7 @@ export function rotationNames(plans) {
   return [...new Set((plans || []).filter(isRotationPlan).map(item => item.rotationName).filter(Boolean))];
 }
 
-export function normalizeMonthDay(value, fallback = '07-01') {
+export function normalizeMonthDay(value, fallback = '06-15') {
   const text = String(value || '').trim();
   if (!/^\d{2}-\d{2}$/.test(text)) return fallback;
   const [month, day] = text.split('-').map(Number);
