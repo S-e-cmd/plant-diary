@@ -1,15 +1,9 @@
-export const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+import { ISO_DATE_PATTERN, isValidIsoDate } from '../shared/iso-date.js';
+
+export { ISO_DATE_PATTERN, isValidIsoDate };
 
 export function normalizePlanIds(ids) {
   return [...new Set((Array.isArray(ids) ? ids : []).map(id => String(id || '').trim()).filter(Boolean))];
-}
-
-export function isValidIsoDate(date) {
-  const value = String(date || '').trim();
-  if (!ISO_DATE_PATTERN.test(value)) return false;
-  const [year, month, day] = value.split('-').map(Number);
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
 }
 
 export function buildBulkPlanRequest(operation, ids, date = '') {
