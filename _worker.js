@@ -1,7 +1,7 @@
 import { GasResponseError, GasTimeoutError, fetchGas, parseGasJson } from './worker/gas-transport.js';
 import { ApiContractError, normalizeApiBody } from './worker/api-contract.js';
 
-const API_PATH = '/api'; // build: 2026-08-19-v32
+const API_PATH = '/api'; // build: 2026-08-19-v33
 const API_METHOD = 'POST';
 const STARTUP_SCRIPT_PATH = '/client/startup-loader.js';
 
