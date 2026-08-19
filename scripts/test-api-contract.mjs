@@ -41,6 +41,25 @@ assert.deepEqual(
 );
 
 assert.deepEqual(
+  normalizeApiPayload({ action: 'bulkPlans', ids: [' p1 ', '', 'p1', 'p2', '  '], operation: 'complete' }),
+  { action: 'batchPlans', ids: ['p1', 'p2'], operation: 'complete', kind: 'complete' }
+);
+
+for (const ids of [undefined, null, '', 'p1', {}, 1]) {
+  assert.throws(
+    () => normalizeApiPayload({ action: 'bulkPlans', ids, operation: 'complete' }),
+    error => error instanceof ApiContractError && error.message === '一括操作には対象IDの配列が必要です。'
+  );
+}
+
+for (const ids of [[], ['', ' '], [null, undefined, '']]) {
+  assert.throws(
+    () => normalizeApiPayload({ action: 'bulkPlans', ids, operation: 'complete' }),
+    error => error instanceof ApiContractError && error.message === '一括操作には1件以上の対象IDが必要です。'
+  );
+}
+
+assert.deepEqual(
   normalizeApiPayload({ action: 'bulkPlans', ids: ['p1'], operation: 'postpone', date: '2026-08-21' }),
   { action: 'batchPlans', ids: ['p1'], operation: 'postpone', date: '2026-08-21', kind: 'postpone' }
 );
