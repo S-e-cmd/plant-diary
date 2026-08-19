@@ -140,7 +140,7 @@ function normalizeRotationSeason_(req) {
   }
   const normalized = { ...req, rotationName };
   if (req.action === 'endRotationSeason') {
-    const startMonthDay = String(req.startMonthDay || '07-01').trim();
+    const startMonthDay = String(req.startMonthDay || '06-15').trim();
     if (!/^\d{2}-\d{2}$/.test(startMonthDay)) {
       throw new ApiContractError('再開目安はMM-DD形式で指定してください。');
     }
