@@ -15,6 +15,7 @@ const ID_REQUIRED_ACTIONS = new Set([
 ]);
 const TYPE_REQUIRED_ACTIONS = new Set(['update', 'delete', 'restore']);
 const RECORD_TYPES = new Set(['actual', 'plan']);
+const BULK_PLAN_OPERATIONS = new Set(['complete', 'postpone', 'cancel']);
 
 function requireId_(req) {
   if (!ID_REQUIRED_ACTIONS.has(req.action)) return;
@@ -30,10 +31,19 @@ function requireRecordType_(req) {
   }
 }
 
+function requireUpdatePatch_(req) {
+  if (req.action !== 'update') return;
+  const patch = req.patch;
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch) || Object.keys(patch).length === 0) {
+    throw new ApiContractError('updateには空でないpatchオブジェクトが必要です。');
+  }
+}
+
 export function normalizeApiPayload(payload) {
   const req = payload && typeof payload === 'object' ? { ...payload } : {};
   requireId_(req);
   requireRecordType_(req);
+  requireUpdatePatch_(req);
 
   if (req.action === 'parse') {
     return {
@@ -57,7 +67,10 @@ export function normalizeApiPayload(payload) {
   }
 
   if (req.action === 'bulkPlans') {
-    const kind = req.operation ?? req.kind ?? '';
+    const kind = String(req.operation ?? req.kind ?? '').trim();
+    if (!BULK_PLAN_OPERATIONS.has(kind)) {
+      throw new ApiContractError('一括操作はcomplete、postpone、cancelのいずれかを指定してください。');
+    }
     if (kind === 'postpone' && !isValidIsoDate(req.date)) {
       throw new ApiContractError('一括延期には有効な延期後の日付（YYYY-MM-DD）が必要です。');
     }
