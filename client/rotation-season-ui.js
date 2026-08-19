@@ -29,12 +29,18 @@ export function installRotationSeasonUi({ getState, getModel }) {
     const todayList = document.querySelector('#todayList');
     if (!todayList) return;
     const model = getModel();
+    const startPrompt = todayList.querySelector('[data-rotation-season-prompt="start"]');
+    const endPrompt = todayList.querySelector('[data-rotation-season-prompt="end"]');
 
-    todayList.querySelectorAll('[data-rotation-season-prompt]').forEach(node => node.remove());
-
-    if (!model?.seasonCapable) return;
+    if (!model?.seasonCapable) {
+      startPrompt?.remove();
+      endPrompt?.remove();
+      return;
+    }
 
     if (model.mode === 'start') {
+      endPrompt?.remove();
+      if (startPrompt) return;
       const card = document.createElement('div');
       card.className = 'card rotation-card';
       card.dataset.rotationSeasonPrompt = 'start';
@@ -46,8 +52,10 @@ export function installRotationSeasonUi({ getState, getModel }) {
       return;
     }
 
-    const rotationCard = todayList.querySelector('.rotation-card');
-    if (!rotationCard || rotationCard.querySelector('[data-rotation-season-end]')) return;
+    startPrompt?.remove();
+    const rotationCard = [...todayList.querySelectorAll('.rotation-card')]
+      .find(node => !node.dataset.rotationSeasonPrompt);
+    if (!rotationCard || endPrompt || rotationCard.querySelector('[data-rotation-season-end]')) return;
     const wrap = document.createElement('div');
     wrap.dataset.rotationSeasonPrompt = 'end';
     wrap.className = 'rotation-actions';
