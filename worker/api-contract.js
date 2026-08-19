@@ -1,14 +1,6 @@
+import { isValidIsoDate } from '../shared/iso-date.js';
+
 export class ApiContractError extends Error {}
-
-const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-function isValidIsoDate_(date) {
-  const value = String(date || '').trim();
-  if (!ISO_DATE_PATTERN.test(value)) return false;
-  const [year, month, day] = value.split('-').map(Number);
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
-}
 
 export function normalizeApiPayload(payload) {
   const req = payload && typeof payload === 'object' ? { ...payload } : {};
@@ -32,7 +24,7 @@ export function normalizeApiPayload(payload) {
 
   if (req.action === 'bulkPlans') {
     const kind = req.operation ?? req.kind ?? '';
-    if (kind === 'postpone' && !isValidIsoDate_(req.date)) {
+    if (kind === 'postpone' && !isValidIsoDate(req.date)) {
       throw new ApiContractError('一括延期には有効な延期後の日付（YYYY-MM-DD）が必要です。');
     }
     return {
