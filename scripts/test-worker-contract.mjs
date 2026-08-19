@@ -214,6 +214,86 @@ try {
     });
   });
 
+  await run('bulkPlans returns bootstrap-shaped data with result counts', async () => {
+    let upstreamBody = null;
+    globalThis.fetch = async (url, init) => {
+      upstreamBody = JSON.parse(init.body);
+      return new Response(JSON.stringify({
+        ok: true,
+        data: {
+          processed: 2,
+          skipped: 1,
+          bootstrap: {
+            actuals: [{ id: 'a2' }],
+            plans: [{ id: 'p2' }],
+            weather: { code: 2 }
+          }
+        }
+      }), { status: 200 });
+    };
+
+    const response = await worker.fetch(
+      request('/api', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'bulkPlans', ids: [' p1 ', 'p2', 'p1'], operation: 'complete' })
+      }),
+      { ASSETS: { fetch: originalFetch } }
+    );
+
+    assert.deepEqual(upstreamBody, { action: 'batchPlans', ids: ['p1', 'p2'], operation: 'complete', kind: 'complete' });
+    assert.deepEqual(await json(response), {
+      ok: true,
+      data: {
+        actuals: [{ id: 'a2' }],
+        plans: [{ id: 'p2' }],
+        weather: { code: 2 },
+        batchPlansResult: { processed: 2, skipped: 1 }
+      }
+    });
+  });
+
+  await run('batchPlans accepts an already bootstrap-shaped successful GAS response', async () => {
+    globalThis.fetch = async () => new Response(JSON.stringify({
+      ok: true,
+      data: { actuals: [], plans: [{ id: 'p3' }] }
+    }), { status: 200 });
+
+    const response = await worker.fetch(
+      request('/api', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'bulkPlans', ids: ['p3'], operation: 'cancel' })
+      }),
+      { ASSETS: { fetch: originalFetch } }
+    );
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await json(response), {
+      ok: true,
+      data: { actuals: [], plans: [{ id: 'p3' }] }
+    });
+  });
+
+  await run('batchPlans rejects malformed successful GAS wrapper', async () => {
+    globalThis.fetch = async () => new Response(JSON.stringify({
+      ok: true,
+      data: { processed: 1, skipped: 0 }
+    }), { status: 200 });
+
+    const response = await worker.fetch(
+      request('/api', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'bulkPlans', ids: ['p1'], operation: 'complete' })
+      }),
+      { ASSETS: { fetch: originalFetch } }
+    );
+
+    assert.equal(response.status, 502);
+    assert.deepEqual(await json(response), {
+      ok: false,
+      error: 'GASの一括予定応答形式が不正です。'
+    });
+  });
+
   await run('invalid GAS JSON returns the existing 502 contract', async () => {
     globalThis.fetch = async () => new Response('<html>not json</html>', { status: 200 });
 
