@@ -31,7 +31,7 @@ assert.deepEqual(
 for (const date of [undefined, '', '2026-8-21', '2026-02-29']) {
   assert.throws(
     () => normalizeApiPayload({ action: 'postponePlan', id: 'p1', date }),
-    error => error instanceof ApiContractError && error.message === '延期後の日付には有効なYYYY-MM-DDが必要です。'
+    error => error instanceof ApiContractError && error.message === '延期には有効な延期後の日付（YYYY-MM-DD）が必要です。'
   );
 }
 
@@ -52,6 +52,15 @@ for (const date of [undefined, '', '2026-8-21', '2026-02-29']) {
   );
 }
 
+for (const action of ['update', 'delete', 'restore', 'postponePlan', 'cancelPlan', 'calendar', 'syncPlanCalendar', 'completePlan', 'skipRotation']) {
+  for (const id of [undefined, '', '   ']) {
+    assert.throws(
+      () => normalizeApiPayload({ action, id, date: action === 'postponePlan' ? '2026-08-21' : undefined }),
+      error => error instanceof ApiContractError && error.message === `${action}には対象IDが必要です。`
+    );
+  }
+}
+
 assert.deepEqual(
   normalizeApiPayload({ action: 'skipRotation', id: 'p1' }),
   { action: 'skipRotation', id: 'p1' }
@@ -60,6 +69,16 @@ assert.deepEqual(
 assert.deepEqual(
   normalizeApiPayload({ action: 'completePlan', id: 'p1' }),
   { action: 'completePlan', id: 'p1' }
+);
+
+assert.deepEqual(
+  normalizeApiPayload({ action: 'update', type: 'actual', id: 'a1', patch: { action: '水やり' } }),
+  { action: 'update', type: 'actual', id: 'a1', patch: { action: '水やり' } }
+);
+
+assert.deepEqual(
+  normalizeApiPayload({ action: 'restore', type: 'plan', id: 'p1' }),
+  { action: 'restore', type: 'plan', id: 'p1' }
 );
 
 assert.equal(normalizeApiBody('not-json'), 'not-json');
