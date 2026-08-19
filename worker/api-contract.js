@@ -16,6 +16,8 @@ const SUPPORTED_ACTIONS = new Set([
   'postponePlan',
   'cancelPlan',
   'skipRotation',
+  'endRotationSeason',
+  'startRotationSeason',
   'calendar',
   'syncPlanCalendar',
   'calendarBulk',
@@ -130,6 +132,28 @@ function requireAppSettings_(req) {
   }
 }
 
+function normalizeRotationSeason_(req) {
+  if (req.action !== 'endRotationSeason' && req.action !== 'startRotationSeason') return null;
+  const rotationName = String(req.rotationName || '').trim();
+  if (!rotationName) {
+    throw new ApiContractError(`${req.action}にはrotationNameが必要です。`);
+  }
+  const normalized = { ...req, rotationName };
+  if (req.action === 'endRotationSeason') {
+    const startMonthDay = String(req.startMonthDay || '07-01').trim();
+    if (!/^\d{2}-\d{2}$/.test(startMonthDay)) {
+      throw new ApiContractError('再開目安はMM-DD形式で指定してください。');
+    }
+    const [month, day] = startMonthDay.split('-').map(Number);
+    const probe = new Date(Date.UTC(2000, month - 1, day));
+    if (probe.getUTCMonth() !== month - 1 || probe.getUTCDate() !== day) {
+      throw new ApiContractError('再開目安に実在する月日を指定してください。');
+    }
+    normalized.startMonthDay = startMonthDay;
+  }
+  return normalized;
+}
+
 function normalizeBulkPlanIds_(ids) {
   if (!Array.isArray(ids)) {
     throw new ApiContractError('一括操作には対象IDの配列が必要です。');
@@ -171,6 +195,9 @@ export function normalizeApiPayload(payload) {
 
   const analyze = normalizeAnalyze_(req);
   if (analyze) return analyze;
+
+  const rotationSeason = normalizeRotationSeason_(req);
+  if (rotationSeason) return rotationSeason;
 
   const batchPlans = normalizeBatchPlans_(req);
   if (batchPlans) return batchPlans;
