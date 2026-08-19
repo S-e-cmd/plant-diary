@@ -51,33 +51,33 @@ assert.equal(model.done, 2);
 assert.equal(model.seasonCapable, false);
 assert.deepEqual(model.rows.map(x => x.id), ['r1', 'r3']);
 
-assert.equal(normalizeMonthDay('07-01'), '07-01');
-assert.equal(normalizeMonthDay('02-30'), '07-01');
-assert.equal(shouldOfferSeasonStart({ state: 'ended', endedYear: 2026, startMonthDay: '07-01' }, '2027-06-30'), false);
-assert.equal(shouldOfferSeasonStart({ state: 'ended', endedYear: 2026, startMonthDay: '07-01' }, '2027-07-01'), true);
-assert.equal(shouldOfferSeasonStart({ state: 'ended', endedYear: 2026, startMonthDay: '07-01' }, '2026-08-19'), false);
+assert.equal(normalizeMonthDay('06-15'), '06-15');
+assert.equal(normalizeMonthDay('02-30'), '06-15');
+assert.equal(shouldOfferSeasonStart({ state: 'ended', endedYear: 2026, startMonthDay: '06-15' }, '2027-06-14'), false);
+assert.equal(shouldOfferSeasonStart({ state: 'ended', endedYear: 2026, startMonthDay: '06-15' }, '2027-06-15'), true);
+assert.equal(shouldOfferSeasonStart({ state: 'ended', endedYear: 2026, startMonthDay: '06-15' }, '2026-08-19'), false);
 
 const endedPlans = plans.map(x => x.rotationName === base.rotationName ? {
   ...x,
   status: '中止',
   rotationSeasonState: 'ended',
   rotationSeasonYear: 2026,
-  rotationStartMonthDay: '07-01',
+  rotationStartMonthDay: '06-15',
   rotationSeasonCapable: true,
   updatedAt: '2026-08-19T01:00:00.000Z'
 } : x);
 assert.deepEqual(rotationSeasonFromPlans(endedPlans, base.rotationName), {
   state: 'ended',
   year: 2026,
-  startMonthDay: '07-01',
+  startMonthDay: '06-15',
   updatedAt: '2026-08-19T01:00:00.000Z'
 });
 assert.equal(rotationViewModel(endedPlans, actuals, 12, { today: '2026-08-19' }), null);
 
-const startModel = rotationViewModel(endedPlans, actuals, 12, { today: '2027-07-01' });
+const startModel = rotationViewModel(endedPlans, actuals, 12, { today: '2027-06-15' });
 assert.equal(startModel.mode, 'start');
 assert.equal(startModel.rotationName, base.rotationName);
-assert.equal(startModel.startMonthDay, '07-01');
+assert.equal(startModel.startMonthDay, '06-15');
 assert.equal(startModel.endedYear, 2026);
 assert.equal(startModel.seasonCapable, true);
 
