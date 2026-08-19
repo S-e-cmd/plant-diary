@@ -1,7 +1,7 @@
 import { GasResponseError, GasTimeoutError, fetchGas, parseGasJson } from './worker/gas-transport.js';
 import { ApiContractError, normalizeApiBody } from './worker/api-contract.js';
 
-const API_PATH = '/api'; // build: 2026-08-19-v45
+const API_PATH = '/api'; // build: 2026-08-19-v46
 const API_METHOD = 'POST';
 const STARTUP_SCRIPT_PATH = '/client/startup-loader.js';
 
@@ -24,10 +24,22 @@ async function serveAsset_(request, env, pathname) {
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('text/html')) return response;
 
-  const html = await response.text();
+  let html = await response.text();
+  const buildMatch = html.match(/<!--\s*build:\s*([^\s/]+)[^>]*-->/i);
+  const clientBuild = buildMatch?.[1] || '';
+  if (clientBuild && !html.includes('data-client-build')) {
+    html = html.replace(
+      '<h1>植物栽培管理日誌</h1>',
+      `<h1>植物栽培管理日誌 <span data-client-build style="font-size:10px;font-weight:700;opacity:.72;margin-left:6px;white-space:nowrap">${clientBuild}</span></h1>`
+    );
+  }
+
   const marker = '<script>';
   if (!html.includes(marker) || html.includes('data-startup-loader')) {
-    return new Response(html, { status: response.status, headers: response.headers });
+    const headers = new Headers(response.headers);
+    headers.delete('content-length');
+    headers.set('cache-control', 'no-store');
+    return new Response(html, { status: response.status, headers });
   }
 
   const loaderUrl = new URL(STARTUP_SCRIPT_PATH, request.url);
