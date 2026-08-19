@@ -8,7 +8,10 @@ export function createRotationRuntime(getState) {
 
     viewModel(minimumTotal = 12) {
       const state = getState();
-      return rotationViewModel(state.plans || [], state.actuals || [], minimumTotal);
+      return rotationViewModel(state.plans || [], state.actuals || [], minimumTotal, {
+        seasons: state.rotationSeasons || {},
+        today: state.today || ''
+      });
     },
 
     needsNextCycle(rotationName) {
