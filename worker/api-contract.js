@@ -22,6 +22,13 @@ export function normalizeApiPayload(payload) {
     return { action: 'syncAllPlansCalendar' };
   }
 
+  if (req.action === 'postponePlan') {
+    if (!isValidIsoDate(req.date)) {
+      throw new ApiContractError('延期後の日付には有効なYYYY-MM-DDが必要です。');
+    }
+    return req;
+  }
+
   if (req.action === 'bulkPlans') {
     const kind = req.operation ?? req.kind ?? '';
     if (kind === 'postpone' && !isValidIsoDate(req.date)) {
