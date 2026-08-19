@@ -1,7 +1,7 @@
 import { GasResponseError, GasTimeoutError, fetchGas, parseGasJson } from './worker/gas-transport.js';
 import { ApiContractError, normalizeApiBody } from './worker/api-contract.js';
 
-const API_PATH = '/api'; // build: 2026-08-19-v38
+const API_PATH = '/api'; // build: 2026-08-19-v39
 const API_METHOD = 'POST';
 const STARTUP_SCRIPT_PATH = '/client/startup-loader.js';
 
@@ -53,28 +53,47 @@ function requestAction_(body) {
   }
 }
 
-function normalizeGasResponse_(action, payload) {
-  if (action !== 'syncAllPlansCalendar' || !payload?.ok) return payload;
+function isBootstrapShape_(result) {
+  return !!(result && typeof result === 'object' && (Array.isArray(result.actuals) || Array.isArray(result.plans)));
+}
 
-  const result = payload.data;
+function normalizeWrappedBootstrap_(payload, result, metaKey, meta) {
   if (result?.bootstrap && typeof result.bootstrap === 'object') {
     return {
       ...payload,
       data: {
         ...result.bootstrap,
-        calendarBulkResult: {
-          registered: Number(result.registered) || 0,
-          skipped: Number(result.skipped) || 0
-        }
+        [metaKey]: meta
       }
     };
   }
+  if (isBootstrapShape_(result)) return payload;
+  return null;
+}
 
-  if (result && typeof result === 'object' && (Array.isArray(result.actuals) || Array.isArray(result.plans))) {
-    return payload;
+function normalizeGasResponse_(action, payload) {
+  if (!payload?.ok) return payload;
+
+  const result = payload.data;
+  if (action === 'syncAllPlansCalendar') {
+    const normalized = normalizeWrappedBootstrap_(payload, result, 'calendarBulkResult', {
+      registered: Number(result?.registered) || 0,
+      skipped: Number(result?.skipped) || 0
+    });
+    if (normalized) return normalized;
+    throw new GasResponseError('GASの一括カレンダー応答形式が不正です。');
   }
 
-  throw new GasResponseError('GASの一括カレンダー応答形式が不正です。');
+  if (action === 'batchPlans') {
+    const normalized = normalizeWrappedBootstrap_(payload, result, 'batchPlansResult', {
+      processed: Number(result?.processed) || 0,
+      skipped: Number(result?.skipped) || 0
+    });
+    if (normalized) return normalized;
+    throw new GasResponseError('GASの一括予定応答形式が不正です。');
+  }
+
+  return payload;
 }
 
 async function handleApiRequest_(request) {
