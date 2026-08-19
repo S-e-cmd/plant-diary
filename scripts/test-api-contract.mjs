@@ -14,6 +14,41 @@ assert.deepEqual(
 );
 
 assert.deepEqual(
+  normalizeApiPayload({ action: 'analyze', inputType: 'actual', text: '  水やり  ' }),
+  { action: 'analyze', inputType: 'actual', text: '水やり' }
+);
+
+for (const action of ['parse', 'analyze']) {
+  for (const text of [undefined, '', '   ']) {
+    assert.throws(
+      () => normalizeApiPayload({ action, type: 'actual', rawText: action === 'parse' ? text : undefined, text: action === 'analyze' ? text : undefined }),
+      error => error instanceof ApiContractError && error.message === '分析には作業内容が必要です。'
+    );
+  }
+  for (const type of [undefined, '', ' ', 'other', 'Actual', 'PLAN']) {
+    assert.throws(
+      () => normalizeApiPayload({ action, type: action === 'parse' ? type : undefined, inputType: action === 'analyze' ? type : undefined, rawText: action === 'parse' ? '水やり' : undefined, text: action === 'analyze' ? '水やり' : undefined }),
+      error => error instanceof ApiContractError && error.message === '分析のtypeはactualまたはplanで指定してください。'
+    );
+  }
+}
+
+assert.deepEqual(
+  normalizeApiPayload({ action: 'saveAppSettings', settings: {} }),
+  { action: 'saveAppSettings', settings: {} }
+);
+assert.deepEqual(
+  normalizeApiPayload({ action: 'saveAppSettings', settings: { outlookDays: 7 } }),
+  { action: 'saveAppSettings', settings: { outlookDays: 7 } }
+);
+for (const settings of [undefined, null, '', [], 1, false]) {
+  assert.throws(
+    () => normalizeApiPayload({ action: 'saveAppSettings', settings }),
+    error => error instanceof ApiContractError && error.message === 'saveAppSettingsにはsettingsオブジェクトが必要です。'
+  );
+}
+
+assert.deepEqual(
   normalizeApiPayload({ action: 'calendar', id: 'p1' }),
   { action: 'syncPlanCalendar', id: 'p1' }
 );
