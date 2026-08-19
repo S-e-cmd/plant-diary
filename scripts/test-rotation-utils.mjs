@@ -5,6 +5,7 @@ import {
   rotationActuals,
   rotationNames,
   normalizeMonthDay,
+  rotationSeasonFromPlans,
   shouldOfferSeasonStart,
   rotationViewModel,
   needsNextCycle
@@ -55,19 +56,27 @@ assert.equal(shouldOfferSeasonStart({ state: 'ended', endedYear: 2026, startMont
 assert.equal(shouldOfferSeasonStart({ state: 'ended', endedYear: 2026, startMonthDay: '07-01' }, '2027-07-01'), true);
 assert.equal(shouldOfferSeasonStart({ state: 'ended', endedYear: 2026, startMonthDay: '07-01' }, '2026-08-19'), false);
 
-const endedPlans = plans.map(x => x.rotationName === base.rotationName ? { ...x, status: x.id === 'normal' ? x.status : '中止' } : x);
-assert.equal(rotationViewModel(endedPlans, actuals, 12, {
-  seasons: { [base.rotationName]: { state: 'ended', endedYear: 2026, startMonthDay: '07-01' } },
-  today: '2026-08-19'
-}), null);
-
-const startModel = rotationViewModel(endedPlans, actuals, 12, {
-  seasons: { [base.rotationName]: { state: 'ended', endedYear: 2026, startMonthDay: '07-01' } },
-  today: '2027-07-01'
+const endedPlans = plans.map(x => x.rotationName === base.rotationName ? {
+  ...x,
+  status: '中止',
+  rotationSeasonState: 'ended',
+  rotationSeasonYear: 2026,
+  rotationStartMonthDay: '07-01',
+  updatedAt: '2026-08-19T01:00:00.000Z'
+} : x);
+assert.deepEqual(rotationSeasonFromPlans(endedPlans, base.rotationName), {
+  state: 'ended',
+  year: 2026,
+  startMonthDay: '07-01',
+  updatedAt: '2026-08-19T01:00:00.000Z'
 });
+assert.equal(rotationViewModel(endedPlans, actuals, 12, { today: '2026-08-19' }), null);
+
+const startModel = rotationViewModel(endedPlans, actuals, 12, { today: '2027-07-01' });
 assert.equal(startModel.mode, 'start');
 assert.equal(startModel.rotationName, base.rotationName);
 assert.equal(startModel.startMonthDay, '07-01');
+assert.equal(startModel.endedYear, 2026);
 
 assert.equal(needsNextCycle([
   { ...base, rotationOrder: 1, status: '完了' },
