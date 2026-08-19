@@ -34,6 +34,31 @@ for (const payload of [
   );
 }
 
+assert.deepEqual(
+  normalizeApiPayload({ action: 'endRotationSeason', rotationName: ' ダリア用ローテーション ' }),
+  { action: 'endRotationSeason', rotationName: 'ダリア用ローテーション', startMonthDay: '07-01' }
+);
+assert.deepEqual(
+  normalizeApiPayload({ action: 'endRotationSeason', rotationName: 'ダリア用ローテーション', startMonthDay: '07-15' }),
+  { action: 'endRotationSeason', rotationName: 'ダリア用ローテーション', startMonthDay: '07-15' }
+);
+assert.deepEqual(
+  normalizeApiPayload({ action: 'startRotationSeason', rotationName: ' ダリア用ローテーション ' }),
+  { action: 'startRotationSeason', rotationName: 'ダリア用ローテーション' }
+);
+for (const action of ['endRotationSeason', 'startRotationSeason']) {
+  assert.throws(
+    () => normalizeApiPayload({ action, rotationName: '   ' }),
+    error => error instanceof ApiContractError && error.message === `${action}にはrotationNameが必要です。`
+  );
+}
+for (const startMonthDay of ['7-01', '13-01', '02-30']) {
+  assert.throws(
+    () => normalizeApiPayload({ action: 'endRotationSeason', rotationName: 'ダリア用ローテーション', startMonthDay }),
+    error => error instanceof ApiContractError
+  );
+}
+
 assert.equal(normalizeApiBody('not-json'), 'not-json');
 assert.equal(
   normalizeApiBody(JSON.stringify({ action: 'bootstrap' })),
