@@ -39,6 +39,17 @@ function requireUpdatePatch_(req) {
   }
 }
 
+function normalizeBulkPlanIds_(ids) {
+  if (!Array.isArray(ids)) {
+    throw new ApiContractError('一括操作には対象IDの配列が必要です。');
+  }
+  const normalized = [...new Set(ids.map(id => String(id ?? '').trim()).filter(Boolean))];
+  if (!normalized.length) {
+    throw new ApiContractError('一括操作には1件以上の対象IDが必要です。');
+  }
+  return normalized;
+}
+
 export function normalizeApiPayload(payload) {
   const req = payload && typeof payload === 'object' ? { ...payload } : {};
   requireId_(req);
@@ -71,11 +82,13 @@ export function normalizeApiPayload(payload) {
     if (!BULK_PLAN_OPERATIONS.has(kind)) {
       throw new ApiContractError('一括操作はcomplete、postpone、cancelのいずれかを指定してください。');
     }
+    const ids = normalizeBulkPlanIds_(req.ids);
     if (kind === 'postpone' && !isValidIsoDate(req.date)) {
       throw new ApiContractError('一括延期には有効な延期後の日付（YYYY-MM-DD）が必要です。');
     }
     return {
       ...req,
+      ids,
       action: 'batchPlans',
       kind
     };
