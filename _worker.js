@@ -39,10 +39,10 @@ async function serveAsset_(request, env, pathname) {
   const headers = new Headers(response.headers);
   headers.delete('content-length');
   headers.set('cache-control', 'no-store');
-  return new Response(html.replace(marker, `${startupScript}\n${marker}`, {
+  return new Response(html.replace(marker, `${startupScript}\n${marker}`), {
     status: response.status,
     headers
-  }));
+  });
 }
 
 function requestAction_(body) {
