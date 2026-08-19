@@ -13,6 +13,8 @@ const ID_REQUIRED_ACTIONS = new Set([
   'completePlan',
   'skipRotation'
 ]);
+const TYPE_REQUIRED_ACTIONS = new Set(['update', 'delete', 'restore']);
+const RECORD_TYPES = new Set(['actual', 'plan']);
 
 function requireId_(req) {
   if (!ID_REQUIRED_ACTIONS.has(req.action)) return;
@@ -21,9 +23,17 @@ function requireId_(req) {
   }
 }
 
+function requireRecordType_(req) {
+  if (!TYPE_REQUIRED_ACTIONS.has(req.action)) return;
+  if (!RECORD_TYPES.has(String(req.type || '').trim())) {
+    throw new ApiContractError(`${req.action}のtypeはactualまたはplanで指定してください。`);
+  }
+}
+
 export function normalizeApiPayload(payload) {
   const req = payload && typeof payload === 'object' ? { ...payload } : {};
   requireId_(req);
+  requireRecordType_(req);
 
   if (req.action === 'parse') {
     return {
