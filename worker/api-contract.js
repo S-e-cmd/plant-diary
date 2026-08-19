@@ -2,6 +2,30 @@ import { isValidIsoDate } from '../shared/iso-date.js';
 
 export class ApiContractError extends Error {}
 
+const SUPPORTED_ACTIONS = new Set([
+  'bootstrap',
+  'bootstrapCore',
+  'parse',
+  'analyze',
+  'checkDuplicates',
+  'save',
+  'update',
+  'delete',
+  'restore',
+  'completePlan',
+  'postponePlan',
+  'cancelPlan',
+  'skipRotation',
+  'calendar',
+  'syncPlanCalendar',
+  'calendarBulk',
+  'syncAllPlansCalendar',
+  'bulkPlans',
+  'batchPlans',
+  'saveAppSettings',
+  'getAnalysis',
+  'rebuildSummaries'
+]);
 const ID_REQUIRED_ACTIONS = new Set([
   'update',
   'delete',
@@ -23,6 +47,13 @@ function isNonEmptyObject_(value) {
 
 function isObject_(value) {
   return !!(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function requireSupportedAction_(req) {
+  const action = String(req.action || '').trim();
+  if (!SUPPORTED_ACTIONS.has(action)) {
+    throw new ApiContractError('未対応の操作です。');
+  }
 }
 
 function requireId_(req) {
@@ -110,8 +141,27 @@ function normalizeBulkPlanIds_(ids) {
   return normalized;
 }
 
+function normalizeBatchPlans_(req) {
+  if (req.action !== 'bulkPlans' && req.action !== 'batchPlans') return null;
+  const kind = String(req.operation ?? req.kind ?? '').trim();
+  if (!BULK_PLAN_OPERATIONS.has(kind)) {
+    throw new ApiContractError('一括操作はcomplete、postpone、cancelのいずれかを指定してください。');
+  }
+  const ids = normalizeBulkPlanIds_(req.ids);
+  if (kind === 'postpone' && !isValidIsoDate(req.date)) {
+    throw new ApiContractError('一括延期には有効な延期後の日付（YYYY-MM-DD）が必要です。');
+  }
+  return {
+    ...req,
+    ids,
+    action: 'batchPlans',
+    kind
+  };
+}
+
 export function normalizeApiPayload(payload) {
-  const req = payload && typeof payload === 'object' ? { ...payload } : {};
+  const req = payload && typeof payload === 'object' && !Array.isArray(payload) ? { ...payload } : {};
+  requireSupportedAction_(req);
   requireId_(req);
   requireRecordType_(req);
   requireUpdatePatch_(req);
@@ -121,6 +171,9 @@ export function normalizeApiPayload(payload) {
 
   const analyze = normalizeAnalyze_(req);
   if (analyze) return analyze;
+
+  const batchPlans = normalizeBatchPlans_(req);
+  if (batchPlans) return batchPlans;
 
   if (req.action === 'calendar') {
     return { ...req, action: 'syncPlanCalendar' };
@@ -134,23 +187,6 @@ export function normalizeApiPayload(payload) {
     throw new ApiContractError('延期には有効な延期後の日付（YYYY-MM-DD）が必要です。');
   }
 
-  if (req.action === 'bulkPlans') {
-    const kind = String(req.operation ?? req.kind ?? '').trim();
-    if (!BULK_PLAN_OPERATIONS.has(kind)) {
-      throw new ApiContractError('一括操作はcomplete、postpone、cancelのいずれかを指定してください。');
-    }
-    const ids = normalizeBulkPlanIds_(req.ids);
-    if (kind === 'postpone' && !isValidIsoDate(req.date)) {
-      throw new ApiContractError('一括延期には有効な延期後の日付（YYYY-MM-DD）が必要です。');
-    }
-    return {
-      ...req,
-      ids,
-      action: 'batchPlans',
-      kind
-    };
-  }
-
   return req;
 }
 
@@ -159,7 +195,7 @@ export function normalizeApiBody(body) {
   try {
     payload = JSON.parse(body);
   } catch {
-    return body;
+    throw new ApiContractError('送信内容は正しいJSON形式で指定してください。');
   }
   return JSON.stringify(normalizeApiPayload(payload));
 }
