@@ -142,9 +142,12 @@ required(
 );
 required(
   html,
-  /#outlookDays['"]\)\.onchange=e=>\{state\.outlookDays=Number\(e\.target\.value\);syncAppSettings\(\);renderTodayTab\(\)\}/,
+  /\$\('#outlookDays'\)\.onchange=e=>\{state\.outlookDays=Number\(e\.target\.value\);syncAppSettings\(\);renderTodayTab\(\)\}/,
   'outlook range changes preserve the outlook card after redraw'
 );
+required(html, /toggleFavorite[\s\S]*?renderQuickInputs\(\);renderTodayTab\(\);renderLogs\(\);renderPlans\(\)/, 'favorite changes preserve complete Today redraw');
+required(html, /state\.rotationExpanded=!state\.rotationExpanded;renderTodayTab\(\);renderPlans\(\)/, 'rotation expansion preserves complete Today redraw');
+required(html, /localStorage\.setItem\('plantDiaryCollapsed',[\s\S]*?renderTodayTab\(\)/, 'Today section collapse preserves outlook after redraw');
 assert.doesNotMatch(html, /renderOutlook\(\);renderToday\(\)/, 'outlook must not render before renderToday clears todayList');
 ok('Today outlook render order cannot regress to outlook-before-base rendering');
 required(
