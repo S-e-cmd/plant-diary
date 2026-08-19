@@ -2,7 +2,7 @@
 
 Updated: 2026-08-19
 Client page marker: `20260819-02`
-Worker build marker: `2026-08-19-v33`
+Worker build marker: `2026-08-19-v34`
 
 ## Current state
 
@@ -23,10 +23,11 @@ Worker build marker: `2026-08-19-v33`
 - Quick-input processing is active runtime code through `quick-input-utils.js` / `quick-input-runtime.js`.
 - Rotation processing is active runtime code through `rotation-utils.js` / `rotation-runtime.js`.
 - Bulk-plan request construction is active runtime code through `plan-bulk-utils.js`; Worker rejects invalid postpone dates before GAS mutation.
-- Single-plan `postponePlan` now uses the same Worker-side real-calendar validation as bulk postpone. Impossible or malformed dates are rejected before GAS mutation instead of being passed through from the browser prompt.
+- Single-plan `postponePlan` uses the same Worker-side real-calendar validation as bulk postpone. Impossible or malformed dates are rejected before GAS mutation instead of being passed through from the browser prompt.
 - Client and Worker share one real-calendar `YYYY-MM-DD` validator in `shared/iso-date.js`. `client/plan-bulk-utils.js` and `worker/api-contract.js` both import that module, preventing browser/Worker validity drift.
+- Worker now rejects missing or whitespace-only record IDs before GAS mutation for `update`, `delete`, `restore`, `postponePlan`, `cancelPlan`, `calendar` / `syncPlanCalendar`, `completePlan`, and `skipRotation`. Non-record actions such as bootstrap, analysis, save, settings, and bulk calendar remain unaffected.
 - Worker/GAS transport responsibilities remain split. Browser `parse / calendar / calendarBulk / bulkPlans` normalize to GAS `analyze / syncPlanCalendar / syncAllPlansCalendar / batchPlans` at the Worker boundary.
-- `skipRotation` passes through unchanged so GAS retains rotation mutation ownership.
+- `skipRotation` passes through unchanged after ID validation so GAS retains rotation mutation ownership.
 - GAS transport has a 25-second timeout; timeout responses use HTTP 504. Invalid GAS JSON and ordinary transport failures remain HTTP 502.
 - A pre-existing Today-tab rendering bug remains identified: `renderActiveTab()` calls `renderOutlook()` before `renderToday()`, and `renderToday()` replaces `#todayList`, so the inserted outlook card is overwritten. The source fix is to render Today first and insert Outlook afterward; this remains pending until a safe direct `index.html` source edit is available.
 - Local handoff continues through the current parent starter `START_HERE.md`; existing application contracts and deployment architecture remain protected.
@@ -37,7 +38,7 @@ Worker build marker: `2026-08-19-v33`
 - `scripts/test-api-client.mjs` covers browser same-origin API success, API error and non-JSON response behavior.
 - `scripts/test-iso-date.mjs` covers valid dates, leap day, impossible month-end dates, invalid month values and strict zero-padded format.
 - `scripts/check-shared-contract.mjs` requires client bulk-plan validation and Worker API validation to import `shared/iso-date.js` and rejects reintroduction of local date validation.
-- `scripts/test-api-contract.mjs` now covers both single-plan and bulk postpone fail-closed validation, including malformed and impossible dates.
+- `scripts/test-api-contract.mjs` covers single-plan and bulk postpone fail-closed validation and now also verifies missing/blank ID rejection across record mutations while preserving valid `update`, `restore`, `completePlan`, and `skipRotation` payloads.
 - `scripts/test-log-tools-ui.mjs` verifies analysis, usage and deleted-record rendering contracts, including the restore control identifier.
 - `scripts/test-startup-loader.mjs` verifies supported first startup, `startup-core` forecast markers for Core and legacy empty-forecast snapshots, deferred background full refresh, later full bootstrap calls, Logs full-data startup, and background forecast handoff.
 - `scripts/test-weather-runtime.mjs` verifies background full-bootstrap `weather / forecasts / forecastHourly` are applied to current application state rather than a stale startup snapshot.
@@ -60,6 +61,7 @@ Worker build marker: `2026-08-19-v33`
 - cyclic rotation history remains append-only across cycles;
 - `skipRotation` is not equivalent to ordinary cancellation;
 - single and bulk postpone require caller-supplied real `YYYY-MM-DD` dates; Worker uses the shared validator and no layer invents a date;
+- record-scoped mutations require a non-empty target ID and fail before GAS when the ID is absent or whitespace-only;
 - startup snapshots are same-day only and are not used as complete Logs data;
 - startup acceleration applies only to the initial bootstrap in a page session; manual Sync remains a full refresh;
 - accelerated Core/snapshot startup may use only a temporary `startup-core` forecast marker to avoid blocking first paint; full bootstrap remains the authoritative forecast source;
@@ -75,6 +77,7 @@ Worker build marker: `2026-08-19-v33`
 - Browser API request duplication: external UI modules use `client/api-client.js` as the shared request boundary.
 - Client/Worker date validation duplication: removed; `shared/iso-date.js` is the single contract for real `YYYY-MM-DD` validation.
 - Single-plan postpone validation: fail-closed at the Worker boundary, matching bulk postpone semantics.
+- Record ID validation: record-scoped mutations now fail closed at the Worker boundary before GAS when the target ID is absent or blank.
 - CSS responsibility extraction: complete and active.
 - Log runtime delegation: complete and active.
 - Log utility buttons: wired and active through `log-tools-ui.js` against existing GAS contracts.
@@ -83,4 +86,4 @@ Worker build marker: `2026-08-19-v33`
 - Bulk-plan request delegation: complete and active.
 - Today outlook render order: concrete source defect identified; direct `index.html` fix remains pending rather than hidden in Worker/runtime injection.
 - The client page marker remains `20260819-02` because persisted `index.html` itself was not rewritten in this pass; the next safe source edit of `index.html` must roll it forward to reflect accumulated external-runtime changes.
-- Worker build is `2026-08-19-v33` after adding fail-closed single-plan postpone date validation.
+- Worker build is `2026-08-19-v34` after adding fail-closed record ID validation.
