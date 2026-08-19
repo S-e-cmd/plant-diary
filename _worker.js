@@ -1,7 +1,7 @@
 import { GasResponseError, GasTimeoutError, fetchGas, parseGasJson } from './worker/gas-transport.js';
 import { ApiContractError, normalizeApiBody } from './worker/api-contract.js';
 
-const API_PATH = '/api'; // build: 2026-08-19-v37
+const API_PATH = '/api'; // build: 2026-08-19-v38
 const API_METHOD = 'POST';
 const STARTUP_SCRIPT_PATH = '/client/startup-loader.js';
 
@@ -45,6 +45,38 @@ async function serveAsset_(request, env, pathname) {
   });
 }
 
+function requestAction_(body) {
+  try {
+    return JSON.parse(body)?.action || '';
+  } catch {
+    return '';
+  }
+}
+
+function normalizeGasResponse_(action, payload) {
+  if (action !== 'syncAllPlansCalendar' || !payload?.ok) return payload;
+
+  const result = payload.data;
+  if (result?.bootstrap && typeof result.bootstrap === 'object') {
+    return {
+      ...payload,
+      data: {
+        ...result.bootstrap,
+        calendarBulkResult: {
+          registered: Number(result.registered) || 0,
+          skipped: Number(result.skipped) || 0
+        }
+      }
+    };
+  }
+
+  if (result && typeof result === 'object' && (Array.isArray(result.actuals) || Array.isArray(result.plans))) {
+    return payload;
+  }
+
+  throw new GasResponseError('GASの一括カレンダー応答形式が不正です。');
+}
+
 async function handleApiRequest_(request) {
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: apiHeaders_() });
@@ -60,8 +92,10 @@ async function handleApiRequest_(request) {
   }
 
   try {
-    const gasResponse = await fetchGas(normalizeApiBody(body));
-    const data = await parseGasJson(gasResponse);
+    const normalizedBody = normalizeApiBody(body);
+    const action = requestAction_(normalizedBody);
+    const gasResponse = await fetchGas(normalizedBody);
+    const data = normalizeGasResponse_(action, await parseGasJson(gasResponse));
     return json_(data, gasResponse.ok ? 200 : gasResponse.status);
   } catch (error) {
     if (error instanceof ApiContractError) {
