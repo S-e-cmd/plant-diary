@@ -3,6 +3,9 @@ import {
   isRotationPlan,
   activeRotationPlans,
   rotationActuals,
+  rotationNames,
+  normalizeMonthDay,
+  shouldOfferSeasonStart,
   rotationViewModel,
   needsNextCycle
 } from '../client/rotation-utils.js';
@@ -27,6 +30,7 @@ const plans = [
 ];
 
 assert.deepEqual(activeRotationPlans(plans).map(x => x.id), ['r1', 'r3']);
+assert.deepEqual(rotationNames(plans), [base.rotationName]);
 
 const actuals = [
   { id: 'a2', rotationName: base.rotationName, date: '2026-08-18' },
@@ -36,6 +40,7 @@ const actuals = [
 assert.deepEqual(rotationActuals(actuals, base.rotationName).map(x => x.id), ['a1', 'a2']);
 
 const model = rotationViewModel(plans, actuals);
+assert.equal(model.mode, 'active');
 assert.equal(model.current.id, 'r1');
 assert.equal(model.next.id, 'r3');
 assert.equal(model.after.id, 'r3');
@@ -43,6 +48,26 @@ assert.equal(model.total, 12);
 assert.equal(model.count, 1);
 assert.equal(model.done, 2);
 assert.deepEqual(model.rows.map(x => x.id), ['r1', 'r3']);
+
+assert.equal(normalizeMonthDay('07-01'), '07-01');
+assert.equal(normalizeMonthDay('02-30'), '07-01');
+assert.equal(shouldOfferSeasonStart({ state: 'ended', endedYear: 2026, startMonthDay: '07-01' }, '2027-06-30'), false);
+assert.equal(shouldOfferSeasonStart({ state: 'ended', endedYear: 2026, startMonthDay: '07-01' }, '2027-07-01'), true);
+assert.equal(shouldOfferSeasonStart({ state: 'ended', endedYear: 2026, startMonthDay: '07-01' }, '2026-08-19'), false);
+
+const endedPlans = plans.map(x => x.rotationName === base.rotationName ? { ...x, status: x.id === 'normal' ? x.status : '中止' } : x);
+assert.equal(rotationViewModel(endedPlans, actuals, 12, {
+  seasons: { [base.rotationName]: { state: 'ended', endedYear: 2026, startMonthDay: '07-01' } },
+  today: '2026-08-19'
+}), null);
+
+const startModel = rotationViewModel(endedPlans, actuals, 12, {
+  seasons: { [base.rotationName]: { state: 'ended', endedYear: 2026, startMonthDay: '07-01' } },
+  today: '2027-07-01'
+});
+assert.equal(startModel.mode, 'start');
+assert.equal(startModel.rotationName, base.rotationName);
+assert.equal(startModel.startMonthDay, '07-01');
 
 assert.equal(needsNextCycle([
   { ...base, rotationOrder: 1, status: '完了' },
