@@ -24,6 +24,18 @@ assert.deepEqual(
 );
 
 assert.deepEqual(
+  normalizeApiPayload({ action: 'postponePlan', id: 'p1', date: '2026-08-21' }),
+  { action: 'postponePlan', id: 'p1', date: '2026-08-21' }
+);
+
+for (const date of [undefined, '', '2026-8-21', '2026-02-29']) {
+  assert.throws(
+    () => normalizeApiPayload({ action: 'postponePlan', id: 'p1', date }),
+    error => error instanceof ApiContractError && error.message === '延期後の日付には有効なYYYY-MM-DDが必要です。'
+  );
+}
+
+assert.deepEqual(
   normalizeApiPayload({ action: 'bulkPlans', ids: ['p1'], operation: 'complete' }),
   { action: 'batchPlans', ids: ['p1'], operation: 'complete', kind: 'complete' }
 );
