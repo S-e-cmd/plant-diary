@@ -48,6 +48,7 @@ assert.equal(model.after.id, 'r3');
 assert.equal(model.total, 12);
 assert.equal(model.count, 1);
 assert.equal(model.done, 2);
+assert.equal(model.seasonCapable, false);
 assert.deepEqual(model.rows.map(x => x.id), ['r1', 'r3']);
 
 assert.equal(normalizeMonthDay('07-01'), '07-01');
@@ -62,6 +63,7 @@ const endedPlans = plans.map(x => x.rotationName === base.rotationName ? {
   rotationSeasonState: 'ended',
   rotationSeasonYear: 2026,
   rotationStartMonthDay: '07-01',
+  rotationSeasonCapable: true,
   updatedAt: '2026-08-19T01:00:00.000Z'
 } : x);
 assert.deepEqual(rotationSeasonFromPlans(endedPlans, base.rotationName), {
@@ -77,6 +79,7 @@ assert.equal(startModel.mode, 'start');
 assert.equal(startModel.rotationName, base.rotationName);
 assert.equal(startModel.startMonthDay, '07-01');
 assert.equal(startModel.endedYear, 2026);
+assert.equal(startModel.seasonCapable, true);
 
 assert.equal(needsNextCycle([
   { ...base, rotationOrder: 1, status: '完了' },
